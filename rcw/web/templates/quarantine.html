@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Quarantine{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{{ url_for('ui.imports') }}">Imports</a> › Quarantine</div>
+<div class="page-head"><div><h1>Quarantine</h1>
+  <p class="muted">Rows that failed validation. They were never loaded. An open quarantined <b>cash</b> row blocks the close of its month until a corrected file supersedes it or a reviewer dismisses it with a reason.</p></div></div>
+<form method="get" class="row card" style="padding:12px">
+  <label for="st">Status</label>
+  <select id="st" name="status" data-autosubmit>{% for s in ['OPEN', 'DISMISSED', 'SUPERSEDED', 'ALL'] %}<option {{ 'selected' if s == status }}>{{ s }}</option>{% endfor %}</select>
+  <label for="kd">Type</label>
+  <select id="kd" name="kind" data-autosubmit><option value="">All types</option>{% for k in kinds %}<option value="{{ k }}" {{ 'selected' if k == kind }}>{{ labels[k] }}</option>{% endfor %}</select>
+  <noscript><button class="btn sm" type="submit">Filter</button></noscript>
+</form>
+{% if rows %}{% set q = rows %}{% include "_qtable.html" %}
+{% else %}<div class="card empty"><h2>Nothing here</h2><p>No quarantined rows match this filter.</p></div>{% endif %}
+{% endblock %}

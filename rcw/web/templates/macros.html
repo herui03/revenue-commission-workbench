@@ -1,0 +1,21 @@
+{% macro status_badge(status) -%}
+  {%- if status == 'CLOSED' -%}<span class="badge closed" title="Frozen snapshot; never restated">&#10003; Closed</span>
+  {%- elif status == 'IN_REVIEW' -%}<span class="badge review" title="Submitted; waiting for a different reviewer label">&#9680; In review</span>
+  {%- else -%}<span class="badge open" title="Draft: numbers can still change">&#9675; Draft</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro case_badge(status) -%}
+  {%- if status == 'RESOLVED' -%}<span class="badge closed">&#10003; Resolved (explained)</span>
+  {%- elif status == 'CLEARED' -%}<span class="badge info">&#8709; Cleared (no variance)</span>
+  {%- elif status == 'INVESTIGATING' -%}<span class="badge review">&#9680; Investigating</span>
+  {%- elif status == 'REOPENED' -%}<span class="badge bad">&#8634; Reopened</span>
+  {%- else -%}<span class="badge bad">&#9679; Open</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro money_td(v, ccy=None) -%}
+<td class="num{{ ' neg' if v is not none and v < 0 }}">{{ v|money(ccy) }}</td>
+{%- endmacro %}
+
+{% macro csrf() -%}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{%- endmacro %}
+
+{% macro ltype(t, labels) -%}<span class="ltype {{ t }}">{{ labels[t] }}</span>{%- endmacro %}

@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_badge, money_td, csrf with context %}
+{% block title %}{{ p|plabel }}{% endblock %}
+{% block content %}
+{% set res = st.result %}
+{% set blocking = model.holds|selectattr('severity', 'equalto', BLOCKING)|list %}
+<div class="crumbs"><a href="{{ url_for('ui.index') }}">Overview</a> › Periods › {{ p }}</div>
+<div class="page-head">
+  <div class="row"><h1 style="margin:0">{{ p|plabel }}</h1>{{ status_badge(st.status) }}</div>
+  <div class="row small">
+    {% for q in all_periods %}{% if q != p %}<a class="btn sm" href="{{ url_for('ui.period', p=q) }}">{{ q }}</a>{% endif %}{% endfor %}
+  </div>
+</div>
+
+<div class="stepper" aria-label="Workflow">
+  <div class="step done"><span class="n">&#10003;</span><div><div class="t">1 · Choose period</div><div class="d">{{ p }} selected</div></div></div>
+  <div class="step {{ 'done' if st.status in ('IN_REVIEW','CLOSED') else 'now' }}"><span class="n">{{ '&#10003;'|safe if st.status in ('IN_REVIEW','CLOSED') else '2' }}</span>
+    <div><div class="t">2 · Calculate &amp; review</div><div class="d">Resolve holds, calculate a run, submit it for review</div></div></div>
+  <div class="step {{ 'done' if st.status == 'CLOSED' else ('now' if st.status == 'IN_REVIEW' else '') }}"><span class="n">{{ '&#10003;'|safe if st.status == 'CLOSED' else '3' }}</span>
+    <div><div class="t">3 · Inspect, close &amp; export</div><div class="d">Reviewer checks statements and variances, closes, exports</div></div></div>
+</div>
+
+{# ------------------------------------------------------------ action panel #}
+<section class="card" aria-labelledby="act-h">
+  <h2 id="act-h">What to do next</h2>
+  {% if st.closed %}
+    {% if model.meta %}
+    <div class="callout ok">
+      <b>Closed and frozen.</b> Closed {{ model.meta.closed_at }} by <b>{{ model.meta.reviewed_by }}</b>
+      (prepared by {{ model.meta.prepared_by }}), run #{{ model.meta.run_id }}. Snapshot SHA-256
+      <code>{{ model.meta._integrity.sha256 }}</code>
+      — integrity {{ '✓ verified' if model.meta._integrity.verified else '✗ FAILED' }}.
+      Later imports, plan versions or case notes never change this statement; late data is posted as a linked
+      adjustment in the first open month{% if first_open %} (currently <a href="{{ url_for('ui.period', p=first_open) }}">{{ first_open }}</a>){% endif %}.
+    </div>
+    {% else %}
+    <div class="callout">This month is before the last closed month and had no activity when it was closed. It is treated as closed.</div>
+    {% endif %}
+  {% elif st.error %}
+    <div class="callout bad">{{ st.error }}</div>
+  {% else %}
+    {% set run = st.latest_run %}
+    {% if st.status == 'IN_REVIEW' %}
+      <p>Submitted by <b>{{ st.row.prepared_by }}</b> at {{ st.row.submitted_at }} (run #{{ st.row.review_run_id }}).
+      You are acting as <b>{{ actor }}</b>.</p>
+      {% if st.review_current %}
+        <div class="callout ok">The reviewed run still matches every current input, total, control and KPI — closing will freeze exactly what was reviewed.</div>
+      {% else %}
+        <div class="callout bad"><b>Stale review.</b> Inputs changed after submission (a new import, plan, decision or adjustment). Close will be refused with <code>STALE_REVIEW</code>. Recalculate and resubmit.</div>
+      {% endif %}
+      <div class="row">
+        <form method="post" action="{{ url_for('ui.close', p=p) }}" data-confirm="Close {{ p }}? The statement becomes an immutable snapshot and payables are recorded (no payment is executed).">{{ csrf() }}
+          <button class="btn primary" type="submit" {{ 'disabled' if actor == st.row.prepared_by }}>Close {{ p }} as {{ actor }}</button>
+        </form>
+        <form method="post" action="{{ url_for('ui.calculate', p=p) }}">{{ csrf() }}<button class="btn" type="submit">Recalculate</button></form>
+        <form method="post" action="{{ url_for('ui.return_draft', p=p) }}" class="row">{{ csrf() }}
+          <input type="text" name="reason" placeholder="Reason for returning to draft" aria-label="Reason" size="28">
+          <button class="btn" type="submit">Return to draft</button>
+        </form>
+      </div>
+      {% if actor == st.row.prepared_by %}<p class="small muted">Switch <b>Acting as</b> to a different label (e.g. manager-1) to close — preparer and reviewer must differ.</p>{% endif %}
+    {% else %}
+      {% if not run %}
+        <p>No calculation stored yet. The numbers below are a live preview; calculating stores a reviewable run.</p>
+      {% elif st.run_current %}
+        <p>Latest run #{{ run.run_id }} ({{ run.created_at }}, by {{ run.actor }}) matches the current inputs.</p>
+      {% else %}
+        <div class="callout warn">Inputs changed since run #{{ run.run_id }}. Recalculate before submitting.</div>
+      {% endif %}
+      {% if blocking %}<div class="callout bad"><b>{{ blocking|length }} blocking hold(s)</b> must be resolved before this month can be submitted or closed — see below.</div>{% endif %}
+      <div class="row">
+        <form method="post" action="{{ url_for('ui.calculate', p=p) }}">{{ csrf() }}<button class="btn {{ 'primary' if not st.run_current }}" type="submit">{{ 'Recalculate' if run else 'Calculate draft' }}</button></form>
+        <form method="post" action="{{ url_for('ui.submit', p=p) }}">{{ csrf() }}
+          <button class="btn {{ 'primary' if st.run_current and not blocking }}" type="submit" {{ 'disabled' if not st.run_current or blocking }}>Submit for review as {{ actor }}</button>
+        </form>
+      </div>
+    {% endif %}
+  {% endif %}
+</section>
+
+{# ------------------------------------------------------------ holds #}
+{% if model.holds %}
+<section class="card" aria-labelledby="holds-h">
+  <h2 id="holds-h">Holds ({{ model.holds|length }}) — excluded from every total below</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Hold</th><th>Event</th><th class="num">Amount</th><th>What it means</th><th>Resolve</th></tr></thead>
+    <tbody>
+    {% for h in model.holds %}
+      <tr>
+        <td><span class="badge bad">&#9888; {{ h.code }}</span></td>
+        <td class="nowrap">{% if h.event_id and h.code != 'QUARANTINED_CASH_ROW' %}<a href="{{ url_for('ui.event', event_id=h.event_id) }}">{{ h.event_id }}</a>{% else %}{{ h.event_id or '' }}{% endif %}<div class="small muted">{{ h.event_date or '' }}{% if h.rep_id %} · {{ names.get(h.rep_id, h.rep_id) }}{% endif %}</div></td>
+        {{ money_td(h.amount_minor, h.currency) }}
+        <td class="explain">{{ h.message }}</td>
+        <td style="min-width:260px">
+          {% if h.code in ('LATE_EVENT_PENDING', 'ORIGINAL_EXCLUDED', 'NO_SPLIT', 'NO_ASSIGNMENT', 'NO_PLAN_VERSION', 'AMBIGUOUS_ASSIGNMENT') and h.event_id %}
+          <form method="post" action="{{ url_for('ui.decide', event_id=h.event_id) }}" class="stack" data-confirm="Decisions are final and audited. Continue?">{{ csrf() }}
+            <input type="hidden" name="back_period" value="{{ p }}">
+            <input type="text" name="reason" placeholder="Reason (required, 10+ characters)" aria-label="Reason" style="width:100%">
+            <div class="row">
+              {% if h.code == 'LATE_EVENT_PENDING' %}<button class="btn primary sm" name="decision" value="POST_LATE" type="submit">Post as prior-period adjustment in {{ p }}</button>{% endif %}
+              <button class="btn sm" name="decision" value="EXCLUDE" type="submit">Exclude from commission</button>
+            </div>
+          </form>
+          {% elif h.code == 'QUARANTINED_CASH_ROW' %}
+            <a class="btn sm" href="{{ url_for('ui.quarantine') }}">Review in quarantine</a>
+          {% else %}<span class="small muted">Fix the source data (import), then recalculate.</span>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+
+{# ------------------------------------------------------------ metrics & charts #}
+{% for ccy in currencies %}
+{% set k = model.kpis[ccy] %}
+<section class="card" aria-labelledby="k-{{ ccy }}">
+  <div class="row"><h2 id="k-{{ ccy }}" style="margin:0">{{ ccy }} · {{ p|plabel }}</h2><span class="spacer"></span>
+    <span class="small muted">All amounts in {{ ccy }}; never combined with other currencies.</span></div>
+  <div class="tiles t4" style="margin-top:10px">
+    <div class="tile"><div class="k">Bookings signed</div><div class="v">{{ k.bookings_minor|amt }}</div><div class="h">{{ k.bookings_count }} contract(s) · not commissionable</div></div>
+    <div class="tile"><div class="k">Cash collected</div><div class="v">{{ k.cash_collected_minor|amt }}</div><div class="h">receipts dated this month</div></div>
+    <div class="tile"><div class="k">Refunds</div><div class="v">{{ k.refunds_minor|amt }}</div><div class="h">cash returned this month</div></div>
+    <div class="tile"><div class="k">Credited to reps</div><div class="v">{{ k.credited_minor|amt }}</div><div class="h">eligible cash after splits</div></div>
+    <div class="tile"><div class="k">Commission earned</div><div class="v">{{ k.earnings_minor|amt }}</div></div>
+    <div class="tile"><div class="k">Clawbacks</div><div class="v {{ 'neg' if k.clawbacks_minor < 0 }}">{{ k.clawbacks_minor|amt }}</div><div class="h">refund reversals</div></div>
+    <div class="tile"><div class="k">Late &amp; manual adj.</div><div class="v">{{ (k.late_minor + k.manual_minor)|amt }}</div><div class="h">late {{ k.late_minor|amt }} · manual {{ k.manual_minor|amt }}</div></div>
+    <div class="tile em"><div class="k">Expected payouts</div><div class="v">{{ k.net_payable_minor|amt }}</div><div class="h">{{ 'frozen payables' if st.closed else 'draft — not final' }}</div></div>
+  </div>
+  <div class="grid g2" style="margin-top:14px">
+    <div><h3>Credited cash vs monthly threshold</h3><div class="chart-box">{{ chart_attain[ccy]|safe if chart_attain[ccy] else '<p class="small muted">No commission-eligible collections this month.</p>'|safe }}</div></div>
+    <div><h3>From commission earned to expected payouts</h3><div class="chart-box">{{ chart_bridge[ccy]|safe }}</div></div>
+  </div>
+</section>
+{% endfor %}
+{% if not currencies %}<div class="card empty"><h2>No activity in {{ p }}</h2><p>There is no cash, adjustment or late posting for this month.</p></div>{% endif %}
+
+{# ------------------------------------------------------------ rep table #}
+{% if model.totals %}
+<section class="card" aria-labelledby="reps-h">
+  <div class="row"><h2 id="reps-h" style="margin:0">Rep statements</h2><span class="spacer"></span>
+    <input type="text" placeholder="Filter reps…" data-filter="#rep-table" aria-label="Filter reps"></div>
+  <div class="table-wrap" style="margin-top:10px"><table id="rep-table">
+    <thead><tr><th>Rep</th><th>Ccy</th><th class="num">Credited</th><th>Attainment vs threshold</th><th class="num">Earned</th><th class="num">Clawbacks</th><th class="num">Late adj.</th><th class="num">Manual adj.</th><th class="num">Expected payout</th><th></th></tr></thead>
+    <tbody>
+    {% for t in model.totals %}
+      <tr>
+        <td class="rep">{{ names.get(t.rep_id, t.rep_id) }}<div class="small muted">{{ t.rep_id }}</div></td>
+        <td>{{ t.currency }}</td>
+        {{ money_td(t.credited_minor) }}
+        <td>{% if t.threshold_minor %}{% set pct = (100 * t.attainment_minor / t.threshold_minor) %}
+          <div class="meter" title="{{ '%.0f'|format(pct) }}% of threshold"><span style="width:{{ [pct, 100]|min }}%"></span></div>
+          <div class="small muted">{{ '%.0f'|format(pct) }}% of {{ t.threshold_minor|amt }}{% if t.accel_portion_minor %} · {{ t.accel_portion_minor|amt }} accelerated{% endif %}</div>
+        {% else %}<span class="small muted">—</span>{% endif %}</td>
+        {{ money_td(t.earnings_minor) }}{{ money_td(t.clawbacks_minor) }}{{ money_td(t.late_minor) }}{{ money_td(t.manual_minor) }}
+        <td class="num"><b>{{ t.net_minor|money(t.currency) }}</b></td>
+        <td><a class="btn sm" href="{{ url_for('ui.statement', p=p, rep=t.rep_id, ccy=t.currency) }}">Statement</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+
+<div class="grid g2">
+  <section class="card" aria-labelledby="ctl-h">
+    <h2 id="ctl-h">Control checks</h2>
+    {% if model.controls %}
+    <ul class="small" style="padding-left:18px;margin:0">
+      {% for c in model.controls %}
+      <li>{% if c.passed %}<span class="pos">&#10003; PASS</span>{% else %}<span class="neg">&#10007; FAIL</span>{% endif %} {{ c.name }}
+        {% if c.detail is string %}<span class="muted">— {{ c.detail }}</span>
+        {% else %}{% for ccy, per in c.detail.items() %}{% for et, b in per.items() %}<div class="muted">{{ ccy }} {{ et|lower }}: dated {{ b.dated_in_period|amt }} = processed {{ b.processed|amt }} + held {{ b.held|amt }} + excluded {{ b.excluded|amt }}</div>{% endfor %}{% endfor %}{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="small muted">Nothing to check yet.</p>{% endif %}
+  </section>
+
+  <section class="card" aria-labelledby="exp-h">
+    <h2 id="exp-h">Export</h2>
+    <p class="small muted">{{ 'Generated only from the frozen snapshot: byte-identical every time.' if st.closed else 'Draft exports are watermarked and can change until close.' }}</p>
+    <div class="row">
+      <a class="btn" href="{{ url_for('ui.export', p=p, name='statement.csv') }}">Statements CSV</a>
+      <a class="btn" href="{{ url_for('ui.export', p=p, name='statement.html') }}" target="_blank" rel="noopener">Statements HTML</a>
+      <a class="btn" href="{{ url_for('ui.export', p=p, name='control.csv') }}">Control &amp; variance CSV</a>
+      <a class="btn" href="{{ url_for('ui.export', p=p, name='control.html') }}" target="_blank" rel="noopener">Control &amp; variance HTML</a>
+    </div>
+    <p class="small"><a href="{{ url_for('ui.variance_page', period=p) }}">Compare with the recorded payout register →</a></p>
+  </section>
+</div>
+
+{% if model.excluded %}
+<section class="card"><h2>Excluded events (reviewer decision — not paid)</h2>
+  <div class="table-wrap"><table><thead><tr><th>Event</th><th>Date</th><th class="num">Amount</th><th>Reason</th><th>Decided by</th></tr></thead><tbody>
+  {% for e in model.excluded %}<tr><td><a href="{{ url_for('ui.event', event_id=e.event_id) }}">{{ e.event_id }}</a></td><td>{{ e.event_date }}</td>{{ money_td(e.amount_minor, e.currency) }}<td class="explain">{{ e.reason }}</td><td>{{ e.decided_by }}</td></tr>{% endfor %}
+  </tbody></table></div></section>
+{% endif %}
+
+<div class="grid g2">
+  <section class="card" aria-labelledby="adj-h">
+    <h2 id="adj-h">Manual adjustments</h2>
+    <p class="small muted">Shown separately from source earnings. A reason is required; adjustments are append-only (reverse with an opposite entry).</p>
+    {% if adjustments %}
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>Rep</th><th class="num">Amount</th><th>Category</th><th>Reason</th><th>By</th></tr></thead><tbody>
+      {% for a in adjustments %}<tr><td>{{ a.adj_id }}</td><td>{{ names.get(a.rep_id, a.rep_id) }}</td>{{ money_td(a.amount_minor, a.currency) }}<td class="small">{{ a.category }}</td><td class="explain">{{ a.reason }}{% if a.case_id %} (case <a href="{{ url_for('ui.case', case_id=a.case_id) }}">{{ a.case_id }}</a>){% endif %}</td><td>{{ a.actor }}</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% endif %}
+    {% if not st.closed %}
+    <form method="post" action="{{ url_for('ui.add_adjustment', p=p) }}" class="stack" style="margin-top:10px">{{ csrf() }}
+      <div class="form-grid">
+        <div class="field"><label for="adj-rep">Rep</label><select id="adj-rep" name="rep_id">{% for r in reps %}<option value="{{ r.rep_id }}">{{ r.display_name }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="adj-ccy">Currency</label><select id="adj-ccy" name="currency"><option>SGD</option><option>USD</option></select></div>
+        <div class="field"><label for="adj-amt">Amount (e.g. -80.00)</label><input id="adj-amt" type="text" name="amount" inputmode="decimal"></div>
+        <div class="field"><label for="adj-cat">Category</label><select id="adj-cat" name="category"><option value="COMMISSION_ADJUSTMENT">Commission adjustment</option><option value="PAYOUT_CORRECTION">Payout correction</option></select></div>
+      </div>
+      <div class="field"><label for="adj-reason">Reason (required)</label><input id="adj-reason" type="text" name="reason"></div>
+      <div><button class="btn" type="submit">Add adjustment as {{ actor }}</button></div>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="card" aria-labelledby="runs-h">
+    <h2 id="runs-h">Calculation runs</h2>
+    {% if runs %}
+    <div class="table-wrap"><table><thead><tr><th>Run</th><th>When</th><th>By</th><th class="num">Lines</th><th class="num">Blocking holds</th><th>Result digest</th></tr></thead><tbody>
+      {% for r in runs %}<tr><td>#{{ r.run_id }}</td><td class="small">{{ r.created_at }}</td><td class="nowrap">{{ r.actor }}</td><td class="num">{{ r.line_count }}</td><td class="num">{{ r.blocking_holds }}</td><td><code>{{ r.result_digest[:16] }}…</code> <a class="small" href="{{ url_for('ui.variance_page', period=p, as_of_run=r.run_id) }}">as-of view</a></td></tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}<p class="small muted">No runs stored yet.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

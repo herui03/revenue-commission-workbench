@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf with context %}
+{% block title %}Batch #{{ b.batch_id }}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{{ url_for('ui.imports') }}">Imports</a> › Batch #{{ b.batch_id }}</div>
+<div class="page-head"><div><h1>Batch #{{ b.batch_id }} · {{ label }}</h1>
+  <div class="muted">{{ b.original_filename }} · {{ b.mode }} mode · {{ b.imported_at }} · by {{ b.actor }}</div></div></div>
+<section class="card">
+  <dl class="kv"><dt>Status</dt><dd><b>{{ b.status }}</b>{% if b.duplicate_of %} — identical bytes were already imported as <a href="{{ url_for('ui.batch', batch_id=b.duplicate_of) }}">batch #{{ b.duplicate_of }}</a>; nothing was loaded.{% endif %}</dd>
+    <dt>File SHA-256</dt><dd><code>{{ b.sha256 }}</code> ({{ b.size_bytes }} bytes)</dd></dl>
+</section>
+{% if file_errors %}<section class="card"><h2>File rejected</h2><ul>{% for e in file_errors %}<li><b>{{ e.code }}</b> — {{ e.message }}</li>{% endfor %}</ul></section>{% endif %}
+{% if control.rows %}
+<section class="card"><h2>Control totals</h2>
+  <div class="tiles">
+    <div class="tile"><div class="k">Rows read</div><div class="v">{{ control.rows.read }}</div></div>
+    <div class="tile"><div class="k">Accepted</div><div class="v">{{ control.rows.accepted }}</div></div>
+    <div class="tile"><div class="k">Duplicate (skipped)</div><div class="v">{{ control.rows.duplicate }}</div></div>
+    <div class="tile"><div class="k">Quarantined</div><div class="v">{{ control.rows.quarantined }}</div></div>
+    <div class="tile {{ 'em' }}"><div class="k">Reconciles?</div><div class="v">{{ '✓ yes' if control.rows.reconciles else '✗ NO' }}</div><div class="h">read = accepted + duplicate + quarantined</div></div>
+  </div>
+  {% if control.amounts_minor %}
+  <div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Currency</th><th>Amount kind</th><th class="num">Read</th><th class="num">Accepted</th><th class="num">Duplicate</th><th class="num">Quarantined</th><th>Reconciles</th></tr></thead><tbody>
+    {% for ccy, per in control.amounts_minor.items() %}{% for label, a in per.items() %}
+    <tr><td>{{ ccy }}</td><td>{{ label }}</td><td class="num">{{ a.read|amt }}</td><td class="num">{{ a.accepted|amt }}</td><td class="num">{{ a.duplicate|amt }}</td><td class="num">{{ a.quarantined|amt }}</td><td>{{ '✓' if a.reconciles else '✗' }}</td></tr>
+    {% endfor %}{% endfor %}
+  </tbody></table></div>
+  <p class="small muted">{{ control.rows_without_parseable_amount }} row(s) had no parseable amount (counted in rows, not in amounts).{% if control.quarantine_superseded %} {{ control.quarantine_superseded }} earlier quarantined row(s) were superseded by valid rows in this file.{% endif %}</p>
+  {% endif %}
+</section>
+{% endif %}
+{% if control.row_errors %}
+<section class="card"><h2>Why the strict import was rejected (nothing was committed)</h2>
+  <div class="table-wrap"><table><thead><tr><th>Row</th><th>Key</th><th>Problems</th></tr></thead><tbody>
+  {% for r in control.row_errors %}<tr><td>{{ r.source_row }}</td><td><code>{{ r.key }}</code></td><td class="explain">{% for x in r.reasons %}<b>{{ x.code }}</b> {{ x.message }}<br>{% endfor %}</td></tr>{% endfor %}
+  </tbody></table></div></section>
+{% endif %}
+{% if q %}
+<section class="card"><h2>Quarantined rows from this file</h2>
+  {% include "_qtable.html" %}
+</section>
+{% endif %}
+{% endblock %}

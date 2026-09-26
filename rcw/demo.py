@@ -39,6 +39,9 @@ def load_stage(conn: sqlite3.Connection, stage: int, actor: str = SYSTEM) -> lis
     results = []
     for f in sorted((DEMO_DIR / f"stage{stage}").glob("*.csv")):
         results.append(importer.import_csv(conn, kind_for(f), f.name, f.read_bytes(), mode="quarantine", actor=actor))
+    with db.tx(conn):
+        db.set_setting(conn, "demo_stage", str(stage))
+        db.audit(conn, actor, "DEMO_STAGE_LOADED", "settings", "demo_stage", {"stage": stage})
     return results
 
 

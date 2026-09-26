@@ -1,0 +1,28 @@
+{% from "macros.html" import csrf with context %}
+<div class="table-wrap"><table>
+  <thead><tr><th>#</th><th>Type</th><th>Row</th><th>Key</th><th>Why</th><th>Raw values</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for r in q %}
+    <tr>
+      <td>{{ r.q_id }}</td><td class="small">{{ r.file_kind }}</td>
+      <td class="small"><a href="{{ url_for('ui.batch', batch_id=r.batch_id) }}">#{{ r.batch_id }}</a> row {{ r.source_row }}</td>
+      <td><code>{{ r.key|join(' / ') if r.key else '—' }}</code></td>
+      <td class="explain">{% for x in r.reasons %}<b>{{ x.code }}</b> {{ x.message }}<br>{% endfor %}</td>
+      <td class="wrap-any small"><code>{{ r.raw.values()|join(' | ') }}</code></td>
+      <td style="min-width:220px">
+        {% if r.status == 'OPEN' %}
+        <span class="badge bad">&#9679; Open</span>
+        <form method="post" action="{{ url_for('ui.dismiss', q_id=r.q_id) }}" class="stack" style="margin-top:6px" data-confirm="Dismiss this row? It stays in the log; it will not be imported.">{{ csrf() }}
+          <input type="hidden" name="next" value="{{ request.full_path }}">
+          <input type="text" name="reason" placeholder="Dismissal reason (10+ chars)" aria-label="Dismissal reason" style="width:100%">
+          <button class="btn sm" type="submit">Dismiss</button>
+        </form>
+        {% else %}
+        <span class="badge {{ 'info' if r.status == 'SUPERSEDED' else 'open' }}">{{ r.status }}</span>
+        <div class="small muted">{{ r.resolution }} — {{ r.resolved_by }}</div>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>

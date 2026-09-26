@@ -201,7 +201,9 @@ def update_case(conn: sqlite3.Connection, case_id: str, actor: str, *, status: s
         sets = ", ".join(f"{k} = ?" for k in changes)
         conn.execute(f"UPDATE variance_cases SET {sets} WHERE case_id = ?", [*changes.values(), case_id])
         visible = {k: v for k, v in changes.items() if k != "updated_at"}
-        _note(conn, case_id, "SYSTEM", actor, "Updated: " + ", ".join(f"{k}={v}" for k, v in visible.items())
+        shown = {k: (format_minor(v, case["currency"], signed=True) if k == "variance_at_resolution" else v)
+                 for k, v in visible.items()}
+        _note(conn, case_id, "SYSTEM", actor, "Updated: " + ", ".join(f"{k}={v}" for k, v in shown.items())
               + (". Resolved means explained - it does not correct or pay money." if visible.get("status") == "RESOLVED"
                  else ""))
         db.audit(conn, actor, "CASE_UPDATE", "variance_case", case_id, visible)

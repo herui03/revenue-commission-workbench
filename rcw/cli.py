@@ -183,11 +183,24 @@ def cmd_serve(args) -> int:
         print(f"Flask is required for the web UI ({exc}). Install with: pip install -r requirements.txt",
               file=sys.stderr)
         return 4
-    if args.demo:
-        conn = demo.fresh_db(args.db)
+    db_file = Path(args.db)
+    if args.reset_demo:
+        if not args.yes:
+            print("Refusing to reset without --yes (this deletes the demo database).", file=sys.stderr)
+            return 5
+        conn = demo.fresh_db(db_file)
         for r in demo.load_stage(conn, 1):
             print(r.summary())
         conn.close()
+        print(f"Demo database reset and re-seeded at {db_file}")
+    elif args.seed_if_missing and not db_file.exists():
+        conn = demo.fresh_db(db_file)
+        for r in demo.load_stage(conn, 1):
+            print(r.summary())
+        conn.close()
+        print(f"New demo database seeded at {db_file}")
+    elif db_file.exists():
+        print(f"Using existing database {db_file} (your earlier work is kept)")
     app = create_app(args.db)
     print(f"Serving on http://127.0.0.1:{args.port} (localhost only). Ctrl+C to stop.")
     app.run(host="127.0.0.1", port=args.port, debug=False, use_reloader=False)
@@ -214,7 +227,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("serve", help="run the web UI on 127.0.0.1")
     s.add_argument("--port", type=int, default=5057)
-    s.add_argument("--demo", action="store_true", help="reset the DB and load demo stage 1 first")
+    s.add_argument("--seed-if-missing", action="store_true",
+                   help="if the database file does not exist yet, create it with demo stage 1 (never resets)")
+    s.add_argument("--reset-demo", action="store_true", help="DESTRUCTIVE: delete the database and re-seed stage 1")
+    s.add_argument("--yes", action="store_true", help="confirm --reset-demo")
     s.set_defaults(fn=cmd_serve)
 
     s = sub.add_parser("import", help="import a CSV")

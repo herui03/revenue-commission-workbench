@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf with context %}
+{% block title %}Imports{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Imports</h1>
+  <p class="muted">CSV files are identified by the SHA-256 of their bytes, not their filename. Every accepted row keeps its batch and row number.</p></div>
+  <a class="btn" href="{{ url_for('ui.quarantine') }}">Quarantine →</a></div>
+
+<div class="grid g2">
+  <section class="card" aria-labelledby="up-h">
+    <h2 id="up-h">Upload a CSV</h2>
+    <form method="post" action="{{ url_for('ui.upload') }}" enctype="multipart/form-data" class="stack">{{ csrf() }}
+      <div class="field"><label for="kind">File type</label>
+        <select id="kind" name="kind">{% for k in order %}<option value="{{ k }}">{{ labels[k] }} ({{ k }})</option>{% endfor %}</select></div>
+      <fieldset><legend class="small">Mode</legend>
+        <label><input type="radio" name="mode" value="quarantine" checked> Quarantine — load valid rows, hold invalid rows with reasons and control totals</label><br>
+        <label><input type="radio" name="mode" value="strict"> Strict — all rows or nothing (atomic)</label>
+      </fieldset>
+      <div class="field"><label for="file">CSV file (UTF-8, max 5 MB)</label><input id="file" type="file" name="file" accept=".csv,text/csv"></div>
+      <div><button class="btn primary" type="submit">Import as {{ actor }}</button></div>
+    </form>
+    <p class="small muted">Load in this order so references resolve: {{ order|join(' → ') }}. Same file twice → a recorded no-op. Same row id with different values → quarantined, the existing row is never overwritten.</p>
+  </section>
+  <section class="card" aria-labelledby="cols-h">
+    <h2 id="cols-h">Expected columns</h2>
+    <div class="table-wrap"><table><thead><tr><th>Type</th><th>Columns (any order, exact names)</th></tr></thead><tbody>
+      {% for k in order %}<tr><td class="small"><b>{{ k }}</b></td><td class="wrap-any"><code>{{ kinds[k]|join(', ') }}</code></td></tr>{% endfor %}
+    </tbody></table></div>
+    <p class="small muted">Money: plain decimals like <code>1234.50</code> (no separators, max 2 decimals, never floats). Dates: <code>YYYY-MM-DD</code>. IDs: uppercase <code>A-Z 0-9 _ -</code>. Full rules: docs/02_data_dictionary.md.</p>
+  </section>
+</div>
+
+<section class="card" aria-labelledby="hist-h">
+  <h2 id="hist-h">Import history</h2>
+  {% if batches %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>When</th><th>Type</th><th>File</th><th>Mode</th><th>Status</th><th class="num">Read</th><th class="num">Accepted</th><th class="num">Duplicate</th><th class="num">Quarantined</th><th>SHA-256</th></tr></thead>
+    <tbody>
+    {% for b in batches %}
+      <tr>
+        <td><a href="{{ url_for('ui.batch', batch_id=b.batch_id) }}">#{{ b.batch_id }}</a></td>
+        <td class="small">{{ b.imported_at }}</td><td class="small">{{ b.file_kind }}</td>
+        <td class="wrap-any small">{{ b.original_filename }}</td><td class="small">{{ b.mode }}</td>
+        <td>{% if b.status == 'COMMITTED' %}<span class="badge closed">&#10003; Committed</span>
+            {% elif b.status == 'COMMITTED_WITH_QUARANTINE' %}<span class="badge review">&#9888; Partly quarantined</span>
+            {% elif b.status == 'DUPLICATE_FILE' %}<span class="badge info">&#8801; Duplicate of #{{ b.duplicate_of }}</span>
+            {% else %}<span class="badge bad">&#10007; Rejected</span>{% endif %}</td>
+        <td class="num">{{ b.rows_read }}</td><td class="num">{{ b.rows_accepted }}</td><td class="num">{{ b.rows_duplicate }}</td><td class="num">{{ b.rows_quarantined }}</td>
+        <td><code>{{ b.sha256[:12] }}…</code></td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% else %}<div class="empty small">No imports yet. Load the demo from the <a href="{{ url_for('ui.index') }}">overview</a> or upload a file.</div>{% endif %}
+</section>
+{% endblock %}

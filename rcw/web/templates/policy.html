@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Policy &amp; glossary{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Policy &amp; glossary</h1>
+  <p class="muted">One invented demo policy, chosen to make the mechanics visible. It is not an industry standard or a legal rule.</p></div></div>
+
+<div class="grid g2">
+  <section class="card"><h2>The four money words — never mixed</h2>
+    <dl class="kv">
+      <dt>Booking</dt><dd>A signed contract's value, dated by its booking date. Shown for context; earns nothing here.</dd>
+      <dt>Invoice</dt><dd>A bill sent to the customer. Not modelled; the invoice reference on a cash row is informational only.</dd>
+      <dt>Cash collected</dt><dd>Money actually received (a COLLECTION event). <b>The only commission basis.</b> A refund returns part of one specific collection.</dd>
+      <dt>Commission</dt><dd>What the calculation says a rep has earned: earnings, clawbacks, late (prior-period) adjustments and manual adjustments. <i>Expected payout</i> is their net. <i>Recorded payout</i> is what the (synthetic) payout register says. None of these is recognised revenue.</dd>
+    </dl>
+  </section>
+  <section class="card"><h2>Rules</h2>
+    <ol class="small stack" style="padding-left:18px">
+      <li><b>Split credit.</b> Each contract has one credit split totalling exactly 100.00%. Cents are split by largest remainder (ties → smaller rep id), so credited cents always add up to the collected cents.</li>
+      <li><b>Marginal monthly accelerator.</b> Per rep × calendar month × currency: credited cash up to the threshold earns the base rate; cash above it earns the accelerator rate. Cash is walked in date then id order, so file order never matters.</li>
+      <li><b>Rounding.</b> Exact integer arithmetic; one half-up rounding per line.</li>
+      <li><b>Refunds.</b> Reverse the stored original earning in proportion to the cash refunded, cumulatively (after refunds totalling R of a collection x: reversal = half_up(E × R / x)), so a full refund reverses exactly E. Refunds do not reduce attainment or touch other deals.</li>
+      <li><b>Plan versions.</b> Immutable, month-aligned; the version effective on the cash date applies. A new version cannot start in a closed month.</li>
+      <li><b>Close.</b> Draft → review (preparer label) → close (a different reviewer label). Close freezes the exact reviewed run; any later change makes the review stale.</li>
+      <li><b>Late data.</b> Cash dated in a closed month waits on a blocking hold. A reviewer posts it into the first open month (tiered on the closed month's frozen ladder at that month's rates) or excludes it — with a reason.</li>
+      <li><b>Currencies.</b> SGD and USD are always separate; there is no FX.</li>
+    </ol>
+  </section>
+</div>
+
+<section class="card"><h2>Plan versions</h2>
+  {% if plans %}<div class="table-wrap"><table><thead><tr><th>Plan</th><th>Version</th><th>Currency</th><th>Effective from</th><th class="num">Threshold / month</th><th class="num">Base rate</th><th class="num">Accelerator</th><th>Description</th><th>Source</th></tr></thead><tbody>
+    {% for v in plans %}<tr><td>{{ v.plan_id }}</td><td>v{{ v.version }}</td><td>{{ v.currency }}</td><td>{{ v.effective_from }}</td><td class="num">{{ v.threshold_minor|amt }}</td><td class="num">{{ v.base_rate_bps|bps }}</td><td class="num">{{ v.accel_rate_bps|bps }}</td><td class="explain">{{ v.description }}</td><td class="small"><a href="{{ url_for('ui.batch', batch_id=v.batch_id) }}">batch #{{ v.batch_id }}</a> row {{ v.source_row }}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="small muted">No plan versions loaded.</p>{% endif %}
+</section>
+<section class="card"><h2>Plan assignments</h2>
+  {% if assignments %}<div class="table-wrap"><table><thead><tr><th>Assignment</th><th>Rep</th><th>Plan</th><th>From</th><th>To</th></tr></thead><tbody>
+    {% for a in assignments %}<tr><td>{{ a.assignment_id }}</td><td>{{ names.get(a.rep_id, a.rep_id) }}</td><td>{{ a.plan_id }}</td><td>{{ a.effective_from }}</td><td>{{ a.effective_to or 'open' }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="small muted">If two assignments cover a date, the one with the latest start wins; two starting the same day are rejected at import as ambiguous.</p>
+  {% else %}<p class="small muted">No assignments loaded.</p>{% endif %}
+</section>
+<section class="card small"><h2>Engine policy text (frozen into every close snapshot)</h2><p>{{ policy }}</p></section>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "macros.html" import money_td %}
+{% block title %}Contract {{ k.contract_id }}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{{ url_for('ui.index') }}">Overview</a> › Contract</div>
+<div class="page-head"><div><h1>{{ k.contract_id }} · {{ k.account_name }}</h1>
+  <div class="muted">Booked {{ k.booked_amount_minor|money(k.currency) }} on {{ k.booking_date }} · {{ k.product }}</div></div></div>
+<div class="callout small">A <b>booking</b> is a signed contract value. Under this demo policy it earns nothing until cash is <b>collected</b>. Invoices are not modelled.</div>
+<div class="grid g2">
+  <section class="card"><h2>Credit split</h2>
+    {% if splits %}<div class="table-wrap"><table><thead><tr><th>Rep</th><th class="num">Split</th></tr></thead><tbody>
+      {% for s in splits %}<tr><td>{{ names.get(s.rep_id, s.rep_id) }}</td><td class="num">{{ s.split_bps|bps }}</td></tr>{% endfor %}
+      </tbody><tfoot><tr><td>Total</td><td class="num">{{ splits|sum(attribute='split_bps')|bps }}</td></tr></tfoot></table></div>
+    {% else %}<div class="callout bad small">No valid split loaded — cash on this contract is held (NO_SPLIT) until one is imported.</div>{% endif %}
+  </section>
+  <section class="card"><h2>Cash events</h2>
+    {% if events %}<div class="table-wrap"><table><thead><tr><th>Event</th><th>Type</th><th>Date</th><th class="num">Amount</th></tr></thead><tbody>
+      {% for e in events %}<tr><td><a href="{{ url_for('ui.event', event_id=e.event_id) }}">{{ e.event_id }}</a></td><td>{{ e.event_type }}</td><td>{{ e.event_date }}</td>{{ money_td(e.amount_minor if e.event_type == 'COLLECTION' else -e.amount_minor, e.currency) }}</tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}<p class="small muted">No cash collected yet — booked but not commissionable.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}
