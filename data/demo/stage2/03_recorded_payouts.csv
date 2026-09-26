@@ -1,0 +1,4 @@
+record_id,rep_id,period,currency,amount,source_system,memo
+PAY-2026-05-001,REP-AURORA,2026-05,SGD,590.00,PAYROLL-SIM,May commission
+PAY-2026-05-002,REP-CEDAR,2026-05,USD,90.00,PAYROLL-SIM,May commission
+PAY-2026-05-003,REP-DELTA,2026-05,USD,60.00,PAYROLL-SIM,May commission

@@ -1,0 +1,8 @@
+event_id,event_type,contract_id,event_date,currency,amount,original_event_id,invoice_ref,memo
+E-2026-0401,COLLECTION,C-1001,2026-04-06,SGD,10000.00,,INV-7001,Kestrel first instalment
+E-2026-0402,COLLECTION,C-1003,2026-04-14,USD,12345.67,,INV-7002,Quillmark deposit (split 60/40)
+E-2026-0403,COLLECTION,C-1004,2026-04-15,SGD,4000.00,,INV-7003,=SUM(1+1) memo typed by a user (shows CSV formula protection)
+E-2026-0404,COLLECTION,C-1002,2026-04-20,SGD,2000.00,,INV-7004,Harborline starter
+E-2026-0405,COLLECTION,C-1005,2026-04-24,USD,5000.00,,INV-7005,Tideway pilot
+E-2026-0404,COLLECTION,C-1002,2026-04-20,SGD,2000.00,,INV-7004,Harborline starter
+E-2026-0501,COLLECTION,C-1001,2026-05-08,SGD,11000.00,,INV-7010,Kestrel second instalment (scheduled)

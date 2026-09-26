@@ -1,0 +1,5 @@
+event_id,event_type,contract_id,event_date,currency,amount,original_event_id,invoice_ref,memo
+E-2026-0501,COLLECTION,C-1001,2026-05-08,SGD,11000.00,,INV-7010,Kestrel second instalment (scheduled)
+E-2026-0502,REFUND,C-1002,2026-05-12,SGD,1000.00,E-2026-0404,CN-9001,Harborline partial refund (service credit)
+E-2026-0503,COLLECTION,C-1003,2026-05-15,USD,3000.00,,INV-7011,Quillmark milestone 2 (split 60/40)
+E-2026-0431,COLLECTION,C-1005,2026-04-29,USD,1500.00,,INV-7012,Tideway receipt dated 29 Apr; bank feed delivered in June
