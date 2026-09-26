@@ -11,13 +11,17 @@ not accounting, revenue-recognition, payroll or employer software · all data in
 | What is **commission-eligible**, for which rep? | Credit splits (cent-exact), plan assignments, blocking holds |
 | What is **owed per rep** — and why? | Rep statement → every line → cash event → contract → split → plan rule → calculation |
 | **Why did the number change?** | Refund clawbacks at the original rate, late data posted as reasoned adjustments, manual adjustments shown separately |
-| How does **close stop history being rewritten**? | Close freezes the exact reviewed run (SHA-256 snapshot); stale reviews are refused; closed exports are byte-identical forever |
+| How does **close stop history being rewritten**? | Close freezes the exact reviewed run (SHA-256 snapshot); stale reviews are refused; closed exports are unchanged by any later application operation (not protected from tampering by whoever owns the database file) |
 | Why does **payroll's recorded payout differ**? | Variance cases with owner, reason code, notes and suggested causes — *resolved ≠ paid* |
 
 ## Try it in 60 seconds
 
 ```bash
-git clone <this repo> && cd revenue-commission-workbench
+# Until the pull request is merged, the code lives on this branch (private repo: you need access):
+git clone --branch claude/vigilant-curie-tsmtx0 https://github.com/herui03/revenue-commission-workbench.git
+cd revenue-commission-workbench
+#   (after the PR is merged into main, a plain `git clone https://github.com/herui03/revenue-commission-workbench.git` works)
+#   (or: unzip the source ZIP and `cd revenue-commission-workbench`)
 
 # 1) No install needed (Python 3.10+ stdlib): play the whole story, write exports to out/demo/
 python3 -m rcw demo
@@ -62,14 +66,15 @@ per line · SGD and USD never combined. Every decision and its alternatives: `do
 
 ## Evidence (developer self-tests — see the UAT matrix for what was *not* tested)
 * **Hand-computed first:** `tests/expected/` was committed before any engine code (see git history).
-* **Automated tests:** 88 tests / 300+ subtests (`python3 -m unittest discover -s tests -t .` runs without any
-  install; `pytest` adds the Flask tests) — scenarios HC-01…16, validation, stale close, late data,
-  immutability, exports, variance, an independent oracle on seeded random data, order independence.
+* **Automated tests:** 88 tests. With `pip install -r requirements-dev.txt`, `python -m pytest` runs all 88 (plus
+  301 subtests) and they pass. Without any install, `python3 -m unittest discover -s tests -t .` collects the same
+  88 but **skips the 7 Flask web tests**, so 81 run and pass. Coverage: scenarios HC-01…16, validation, stale close,
+  late data, immutability, exports, variance, an independent oracle on seeded random data, order independence.
 * **Browser E2E:** Playwright drives the full story, checks console errors and horizontal overflow at 1440 px and 390 px (`docs/evidence/e2e_results.json`, screenshots).
 * **Benchmark:** 10,000 seeded cash events, oracle match on every rep-month-currency total, runtime and
   environment in `docs/08_benchmark.md` (arithmetic consistency on synthetic data — not real-world validity).
 * **CI:** GitHub Actions, read-only token, Python 3.10/3.11/3.12 stdlib jobs + web/browser job.
-* **Defects actually found and fixed** (incl. by an independent reviewer): `docs/04_defects_log.md`.
+* **Defects actually found and fixed** (by the builder's own tests and by an independent AI reviewer): `docs/04_defects_log.md`.
 
 ## Docs
 | | |
@@ -98,6 +103,11 @@ file. No payment is executed. No FX, no revenue recognition, no draws/carry-forw
 cash need manual adjustments, single-user local SQLite, years 2000–2099 only. Business UAT with real users
 has not been performed.
 
-## AI assistance
-Designed, implemented, tested and documented with Claude Code (AI) under the direction and review of the
-repository owner, who independently ran checks and reported defects R-1…R-5. See `docs/04_defects_log.md`.
+## AI assistance and who did what
+* **Direction & requirements:** Herui (repository owner) — defined the brief, scope and acceptance expectations.
+* **Implementation, tests, docs, evidence:** Claude Code (Anthropic AI).
+* **Independent review:** Codex, an independent AI reviewer acting for Herui, ran static reviews and executed checks on
+  checkpoints and reported defects R-1…R-5 (all fixed with regression tests — `docs/04_defects_log.md`). This was an
+  AI code review, not a human or business review.
+* **Candidate learning still required:** Herui is learning this codebase. Before presenting any part as personal work,
+  reproduce it by hand — the checklist is in `docs/zh/学习指南.md` §11.

@@ -180,7 +180,7 @@
 
   <section class="card" aria-labelledby="exp-h">
     <h2 id="exp-h">Export</h2>
-    <p class="small muted">{{ 'Generated only from the frozen snapshot: byte-identical every time.' if st.closed else 'Draft exports are watermarked and can change until close.' }}</p>
+    <p class="small muted">{{ 'Generated only from the frozen snapshot: unchanged by any later application operation (not protected from tampering by the database-file owner).' if st.closed else 'Draft exports are watermarked and can change until close.' }}</p>
     <div class="row">
       <a class="btn" href="{{ url_for('ui.export', p=p, name='statement.csv') }}">Statements CSV</a>
       <a class="btn" href="{{ url_for('ui.export', p=p, name='statement.html') }}" target="_blank" rel="noopener">Statements HTML</a>

@@ -2,11 +2,12 @@
 
 Three different kinds of evidence, never mixed up:
 
-* **Dev self-test**: automated tests and scripted runs written by the builder (Claude Code, AI-assisted)
+* **Dev self-test**: automated tests and scripted runs written by the builder (Claude Code, an AI)
   and executed in this repository. Links point to the test or artifact.
-* **Independent technical review**: the repository owner independently ran checks on checkpoints
-  (e.g. commit `fb754e0`) and reported findings R-1 … R-5, all fixed with regression tests
-  (see `04_defects_log.md`). This is a code review, not business acceptance.
+* **Independent AI technical review**: Codex, an independent AI reviewer acting for Herui, ran static
+  reviews and executed checks on checkpoints (e.g. commit `fb754e0`) and reported findings R-1 … R-5,
+  all fixed with regression tests (see `04_defects_log.md`). This is an AI code review — not a human
+  review, not business acceptance, and not evidence that Herui has personally reproduced the checks.
 * **External business UAT**: acceptance by real Sales/RevOps/Finance users on real processes —
   **not performed**. This is a synthetic portfolio prototype; no such users or data were involved.
 
