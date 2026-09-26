@@ -30,8 +30,8 @@ from .money import CURRENCIES, MoneyFormatError, parse_amount, parse_percent_to_
 from .periods_util import last_closed_period, month_end, period_of, period_start
 
 ID_RE = re.compile(r"^[A-Z0-9][A-Z0-9_-]{0,39}$")
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-PERIOD_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+DATE_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")  # ASCII digits only (D-001)
+PERIOD_RE = re.compile(r"^[0-9]{4}-(0[1-9]|1[0-2])$")
 MAX_FILE_BYTES = 5 * 1024 * 1024
 MAX_ROWS = 200_000
 
@@ -114,7 +114,7 @@ def _id(row: RowResult, col: str, value: str, *, required: bool = True) -> str |
         if required:
             row.fail("MISSING_VALUE", f"{col} is required")
         return None
-    if not ID_RE.match(v):
+    if not ID_RE.fullmatch(v):
         row.fail("ID_FORMAT", f"{col} {v!r} must be 1-40 chars of A-Z, 0-9, '_' or '-' (uppercase, no spaces)")
         return None
     return v
@@ -137,7 +137,7 @@ def _date(row: RowResult, col: str, value: str, *, required: bool = True) -> dat
         if required:
             row.fail("MISSING_VALUE", f"{col} is required")
         return None
-    if not DATE_RE.match(v):
+    if not DATE_RE.fullmatch(v):
         row.fail("DATE_FORMAT", f"{col} {v!r} must be an ISO date YYYY-MM-DD")
         return None
     try:
@@ -162,8 +162,8 @@ def _amount(row: RowResult, col: str, value: str, *, allow_negative: bool = Fals
         row.fail("AMOUNT_FORMAT", f"{col}: {exc}")
         return None
     if positive and amt <= 0:
+        # keep the parsed value so control totals still count it (the row is quarantined anyway)
         row.fail("AMOUNT_NOT_POSITIVE", f"{col} must be greater than zero")
-        return None
     return amt
 
 
@@ -234,7 +234,7 @@ def _v_splits(row: RowResult, ctx: Ctx) -> None:
 def _v_plans(row: RowResult, ctx: Ctx) -> None:
     pid = _id(row, "plan_id", row.raw["plan_id"])
     ver_txt = (row.raw["version"] or "").strip()
-    version = int(ver_txt) if ver_txt.isdigit() and 1 <= int(ver_txt) <= 9999 else None
+    version = int(ver_txt) if re.fullmatch(r"[0-9]{1,4}", ver_txt) and int(ver_txt) >= 1 else None
     if version is None:
         row.fail("VERSION_FORMAT", f"version {ver_txt!r} must be a whole number 1-9999")
     ccy = _currency(row, row.raw["currency"])
@@ -316,7 +316,7 @@ def _v_payouts(row: RowResult, ctx: Ctx) -> None:
     rec = _id(row, "record_id", row.raw["record_id"])
     rid = _id(row, "rep_id", row.raw["rep_id"])
     per = (row.raw["period"] or "").strip()
-    if not PERIOD_RE.match(per):
+    if not PERIOD_RE.fullmatch(per):
         row.fail("PERIOD_FORMAT", f"period {per!r} must be YYYY-MM")
         per = None
     ccy = _currency(row, row.raw["currency"])
@@ -356,6 +356,11 @@ def _sort_key(row: RowResult) -> tuple:
     biz = getattr(row, "biz_date", None) or ""
     key = [str(k) for k in (row.key or ())]
     return (biz, key, row.row_hash or "", row.source_row)
+
+
+def _insert_key(row: RowResult) -> tuple:
+    is_refund = bool(row.record) and row.record.get("event_type") == "REFUND"
+    return (is_refund, _sort_key(row))
 
 
 # ------------------------------------------------------------------ group checks (need all rows)
@@ -449,8 +454,8 @@ def _group_assignments(rows: list[RowResult], ctx: Ctx) -> None:
 
 def _group_cash(rows: list[RowResult], ctx: Ctx) -> None:
     conn = ctx.conn
-    accepted_collections = {r.record["event_id"]: r for r in rows
-                            if r.ok and r.record["event_type"] == "COLLECTION"}
+    # every still-valid row of this file, whatever its type (so a refund of a refund is named as such)
+    valid_in_file = {r.record["event_id"]: r for r in rows if r.ok}
     quarantined_ids = {r.record["event_id"] for r in rows
                        if r.record and r.record.get("event_id") and r.reasons}
     refunds = sorted((r for r in rows if r.ok and r.record["event_type"] == "REFUND"), key=_sort_key)
@@ -462,8 +467,8 @@ def _group_cash(rows: list[RowResult], ctx: Ctx) -> None:
         db_row = conn.execute("SELECT * FROM cash_events WHERE event_id = ?", (oid,)).fetchone()
         if db_row is not None:
             original = dict(db_row)
-        elif oid in accepted_collections:
-            original = accepted_collections[oid].record
+        elif oid in valid_in_file and valid_in_file[oid] is not r:
+            original = valid_in_file[oid].record
         if original is None:
             extra = " (it is quarantined in this file)" if oid in quarantined_ids else ""
             r.fail("UNKNOWN_ORIGINAL_EVENT", f"original event {oid} is not an imported collection{extra}")
@@ -622,7 +627,10 @@ def import_csv(conn: sqlite3.Connection, kind: str, filename: str, data: bytes, 
                                         duplicates=result.duplicates, quarantined=result.quarantined,
                                         control=result.control)
         superseded = 0
-        for r in sorted(rows, key=_sort_key):
+        # Dependency-safe insertion (R-4): every COLLECTION before any REFUND, so a refund's foreign key to a
+        # same-file collection always resolves. Financial evaluation does not depend on insertion order: the
+        # engine re-sorts by (business date, id) and each row keeps its own source_row provenance.
+        for r in sorted(rows, key=_insert_key):
             if r.outcome == "ACCEPTED":
                 _insert_row(conn, kind, r, result.batch_id)
                 superseded += _supersede(conn, kind, r, result.batch_id, actor)

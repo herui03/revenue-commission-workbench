@@ -6,11 +6,11 @@ import re
 import sqlite3
 from datetime import date
 
-PERIOD_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+PERIOD_RE = re.compile(r"^[0-9]{4}-(0[1-9]|1[0-2])$")
 
 
 def is_period(text: str) -> bool:
-    return bool(PERIOD_RE.match(text or ""))
+    return bool(PERIOD_RE.fullmatch(text or ""))
 
 
 def period_of(d: date | str) -> str:

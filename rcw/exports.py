@@ -203,33 +203,37 @@ def control_report(conn: sqlite3.Connection, period: str) -> dict[str, Any]:
 
 
 def control_csv(report: dict[str, Any]) -> str:
+    """One tidy table. `basis` says where each number comes from:
+    FROZEN = closed snapshot (never changes), DRAFT = current calculation, LIVE = register/cases as of export."""
     model, var = report["model"], report["variance"]
-    rows: list[list[Any]] = [["section", "item", "currency", "metric", "value", "note"]]
-    rows.append(["frozen" if model["status"] == "CLOSED" else "draft", "status", "", "period_status", model["status"],
+    calc_basis = "FROZEN" if model["status"] == "CLOSED" else "DRAFT"
+    rows: list[list[Any]] = [["section", "basis", "item", "currency", "metric", "value", "note"]]
+    rows.append(["status", calc_basis, "period", "", "period_status", model["status"],
                  model["meta"].get("snapshot_sha256") or model["meta"].get("result_digest")])
     for c in model["controls"]:
-        rows.append(["control", c["name"], "", "passed", c["passed"],
-                     c["detail"] if isinstance(c["detail"], str) else "see HTML"])
+        rows.append(["control", calc_basis, c["name"], "", "passed", c["passed"],
+                     c["detail"] if isinstance(c["detail"], str) else "see HTML report"])
     for ccy, k in model["kpis"].items():
         for metric, value in k.items():
-            rows.append(["kpi", "period", ccy, metric, value if metric.endswith("count") else Num(format_plain(value)),
-                         ""])
+            rows.append(["kpi", calc_basis, "period", ccy, metric,
+                         value if metric.endswith("count") else Num(format_plain(value)), ""])
     for h in model["holds"]:
-        rows.append(["hold", h["code"], h.get("currency") or "", h["severity"],
+        rows.append(["hold", calc_basis, h["code"], h.get("currency") or "", h["severity"],
                      Num(format_plain(h["amount_minor"])) if h.get("amount_minor") is not None else None, h["message"]])
     for r in var["rows"]:
-        item = f"{r['rep_id']}"
-        rows.append(["variance", item, r["currency"], "expected", Num(format_plain(r["expected_minor"])),
-                     f"basis {var['basis']}"])
-        rows.append(["variance", item, r["currency"], "recorded", Num(format_plain(r["recorded_minor"])), ""])
-        rows.append(["variance", item, r["currency"], "variance_recorded_minus_expected",
+        rows.append(["expected_payout", calc_basis, r["rep_id"], r["currency"], "expected",
+                     Num(format_plain(r["expected_minor"])), ""])
+    for r in var["rows"]:
+        rows.append(["recorded_payout", "LIVE", r["rep_id"], r["currency"], "recorded",
+                     Num(format_plain(r["recorded_minor"])), "payout register as of export"])
+        rows.append(["variance", "LIVE", r["rep_id"], r["currency"], "recorded_minus_expected",
                      Num(format_plain(r["variance_minor"])), ""])
     for r in var["rows"]:
         c = r["case"]
         if c:
-            rows.append(["live_case_status", c["case_id"], r["currency"], "status", c["status"],
-                         f"owner={c['owner'] or ''}; reason={c['reason_code'] or ''}; live as of export, not part of "
-                         "the frozen snapshot; resolved != corrected or paid"])
+            rows.append(["case_status", "LIVE", c["case_id"], r["currency"], "status", c["status"],
+                         f"rep={c['rep_id']}; owner={c['owner'] or ''}; reason={c['reason_code'] or ''}; "
+                         "resolved means explained - not corrected or paid"])
     return _csv(rows)
 
 

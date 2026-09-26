@@ -23,9 +23,10 @@ CURRENCIES: dict[str, int] = {"SGD": 2, "USD": 2}
 BPS_DENOMINATOR = 10_000          # 10,000 bps = 100%
 MAX_AMOUNT_MINOR = 100_000_000_000  # 1,000,000,000.00 — sanity cap, keeps SQLite int64 far away
 
-_UNSIGNED_AMOUNT = re.compile(r"^(?P<units>\d{1,12})(?:\.(?P<frac>\d{1,2}))?$")
-_SIGNED_AMOUNT = re.compile(r"^(?P<sign>-)?(?P<units>\d{1,12})(?:\.(?P<frac>\d{1,2}))?$")
-_PERCENT = re.compile(r"^(?P<units>\d{1,3})(?:\.(?P<frac>\d{1,2}))?$")
+# ASCII [0-9] only: the regex digit class also matches non-ASCII digits such as "\u0663" (defect D-001).
+_UNSIGNED_AMOUNT = re.compile(r"^(?P<units>[0-9]{1,12})(?:\.(?P<frac>[0-9]{1,2}))?$")
+_SIGNED_AMOUNT = re.compile(r"^(?P<sign>-)?(?P<units>[0-9]{1,12})(?:\.(?P<frac>[0-9]{1,2}))?$")
+_PERCENT = re.compile(r"^(?P<units>[0-9]{1,3})(?:\.(?P<frac>[0-9]{1,2}))?$")
 
 
 class MoneyFormatError(ValueError):
@@ -42,7 +43,7 @@ def parse_amount(text: str, *, allow_negative: bool = False) -> int:
         raise MoneyFormatError("amount is blank")
     s = text.strip()
     pattern = _SIGNED_AMOUNT if allow_negative else _UNSIGNED_AMOUNT
-    m = pattern.match(s)
+    m = pattern.fullmatch(s)
     if not m:
         raise MoneyFormatError(
             f"amount {text!r} must look like 1234.56 (digits, optional 1-2 decimals"
@@ -61,7 +62,7 @@ def parse_amount(text: str, *, allow_negative: bool = False) -> int:
 def parse_percent_to_bps(text: str) -> int:
     """'60' -> 6000, '5.00' -> 500, '33.33' -> 3333. Range 0..100%."""
     s = (text or "").strip()
-    m = _PERCENT.match(s)
+    m = _PERCENT.fullmatch(s)
     if not m:
         raise MoneyFormatError(f"percentage {text!r} must look like 60 or 60.00 (max 2 decimals)")
     bps = int(m.group("units")) * 100 + int((m.group("frac") or "").ljust(2, "0"))
