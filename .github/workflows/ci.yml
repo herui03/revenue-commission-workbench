@@ -1,0 +1,55 @@
+name: ci
+on:
+  push:
+  pull_request:
+# Least privilege: read-only token, no secrets, no deployment.
+permissions:
+  contents: read
+
+jobs:
+  core-stdlib:
+    name: Core (stdlib only, Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit, scenario, workflow and oracle tests (no third-party packages)
+        run: python -m unittest discover -s tests -t . -v
+      - name: Scripted demo story from a clean checkout
+        run: python -m rcw --db "$RUNNER_TEMP/demo.db" demo --out "$RUNNER_TEMP/demo_out"
+      - name: Benchmark smoke run (2,000 events, controls must pass)
+        run: python scripts/benchmark.py --events 2000 --out "$RUNNER_TEMP/bench"
+
+  web:
+    name: Web UI + browser end-to-end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Full pytest suite (includes Flask tests)
+        run: python -m pytest -q
+      - name: Install Chromium for Playwright
+        run: python -m playwright install --with-deps chromium
+      - name: Browser E2E (screenshots + layout checks)
+        run: python scripts/e2e_browser.py
+      - name: Keep screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-evidence
+          path: |
+            docs/evidence/screenshots/
+            docs/evidence/e2e_results.json

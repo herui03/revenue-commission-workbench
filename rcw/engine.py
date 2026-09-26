@@ -186,6 +186,7 @@ class PeriodResult:
 # ------------------------------------------------------------------ helpers
 
 def _resolve_assignment(assignments: list[Assignment], rep_id: str, on: str) -> tuple[Assignment | None, str | None]:
+    """`assignments` is the rep's own list (pre-indexed by rep id in `calculate`)."""
     cands = [a for a in assignments if a.rep_id == rep_id and a.effective_from <= on
              and (a.effective_to is None or on <= a.effective_to)]
     if not cands:
@@ -311,6 +312,12 @@ def calculate(period: str, inp: EngineInput) -> PeriodResult:
         refunded_before[oid] = sum(inp.events[r].amount_minor for r in refund_ids if r in inp.events)
 
     held_collections: dict[str, str] = {}   # event_id -> reason (collection could not be fully computed)
+    by_rep: dict[str, list[Assignment]] = {}
+    for a in inp.assignments:
+        by_rep.setdefault(a.rep_id, []).append(a)
+    by_plan: dict[tuple[str, str], list[PlanVersion]] = {}
+    for v in inp.plan_versions:
+        by_plan.setdefault((v.plan_id, v.currency), []).append(v)
 
     # ---- collections, in global order
     for it in (i for i in items if i.event.event_type == "COLLECTION"):
@@ -330,10 +337,11 @@ def calculate(period: str, inp: EngineInput) -> PeriodResult:
         split_map = dict(splits)
         for rep_id in sorted(credits):
             credit = credits[rep_id]
-            assignment, err = _resolve_assignment(inp.assignments, rep_id, ev.event_date)
+            assignment, err = _resolve_assignment(by_rep.get(rep_id, []), rep_id, ev.event_date)
             plan = None
             if assignment is not None:
-                plan = _resolve_plan(inp.plan_versions, assignment.plan_id, ev.currency, ev.event_date)
+                plan = _resolve_plan(by_plan.get((assignment.plan_id, ev.currency), []), assignment.plan_id,
+                                     ev.currency, ev.event_date)
                 if plan is None:
                     err = "NO_PLAN_VERSION"
             if err:
@@ -368,7 +376,7 @@ def calculate(period: str, inp: EngineInput) -> PeriodResult:
                 "credited_minor": credit, "credit_reversed_minor": 0,
                 "base_portion_minor": base_portion, "accel_portion_minor": accel_portion,
                 "base_rate_bps": plan.base_rate_bps, "accel_rate_bps": plan.accel_rate_bps,
-                "exact_amount": fraction_to_str(exact), "amount_minor": amount,
+                "exact_amount": exact, "amount_minor": amount,   # Fraction; formatted below for this period only
                 "detail": {
                     "event_amount_minor": ev.amount_minor,
                     "split_rule": "largest remainder; ties to smaller rep id",
@@ -376,7 +384,7 @@ def calculate(period: str, inp: EngineInput) -> PeriodResult:
                     "credits_all": {r: credits[r] for r in sorted(credits)},
                     "attainment_before_minor": before, "attainment_after_minor": before + credit,
                     "threshold_minor": plan.threshold_minor, "assignment_id": assignment.assignment_id,
-                    "rounding": "half-up once per line", "rounding_delta": fraction_to_str(Fraction(amount) - exact),
+                    "rounding": "half-up once per line", "rounding_delta": None,
                     "late": it.late, "provenance": {"batch_id": ev.batch_id, "source_row": ev.source_row},
                 },
             }
@@ -430,7 +438,7 @@ def calculate(period: str, inp: EngineInput) -> PeriodResult:
                 "credited_minor": 0, "credit_reversed_minor": credit_alloc[rep_id],
                 "base_portion_minor": 0, "accel_portion_minor": 0,
                 "base_rate_bps": o["base_rate_bps"], "accel_rate_bps": o["accel_rate_bps"],
-                "exact_amount": fraction_to_str(-exact), "amount_minor": -rev,
+                "exact_amount": -exact, "amount_minor": -rev,
                 "detail": {
                     "original_line_key": o["line_key"], "original_period": o["period"],
                     "original_earning_minor": e, "original_credited_minor": o["credited_minor"],
@@ -489,6 +497,12 @@ def calculate(period: str, inp: EngineInput) -> PeriodResult:
                           "event_date": qd, "q_id": q["q_id"]})
 
     period_lines = [ln for ln in lines if ln["period"] == period]
+    for ln in period_lines:   # exact values are only rendered for the period being reported
+        if isinstance(ln["exact_amount"], Fraction):
+            exact = ln["exact_amount"]
+            ln["exact_amount"] = fraction_to_str(exact)
+            if ln["line_type"] in (EARNING, LATE_EARNING):
+                ln["detail"]["rounding_delta"] = fraction_to_str(Fraction(ln["amount_minor"]) - exact)
     period_lines.sort(key=lambda ln: (_type_rank(ln["line_type"]), ln.get("event_date") or "",
                                       ln.get("event_id") or "", ln["rep_id"] or "", ln["line_key"]))
     holds.sort(key=lambda h: (h["severity"] != BLOCKING, h["code"], h.get("event_date") or "",
@@ -549,15 +563,20 @@ def _totals(lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _controls(period, lines, target_items, holds, excluded, inp, orig_lines, refunded_before) -> list[dict[str, Any]]:
     controls: list[dict[str, Any]] = []
     held = {h["event_id"] for h in holds if h.get("event_id")}
+    credited_by_event: dict[str, int] = {}
+    reversed_by_event: dict[str, int] = {}
+    for ln in lines:
+        if ln["line_type"] in (EARNING, LATE_EARNING):
+            credited_by_event[ln["event_id"]] = credited_by_event.get(ln["event_id"], 0) + ln["credited_minor"]
+        elif ln["line_type"] in (CLAWBACK, LATE_CLAWBACK):
+            reversed_by_event[ln["event_id"]] = reversed_by_event.get(ln["event_id"], 0) + ln["credit_reversed_minor"]
     # 1. split conservation per processed collection
     bad = []
     for it in target_items:
         ev = it.event
         if ev.event_type != "COLLECTION" or ev.event_id in held:
             continue
-        credited = sum(ln["credited_minor"] for ln in lines if ln["event_id"] == ev.event_id
-                       and ln["line_type"] in (EARNING, LATE_EARNING))
-        if credited != ev.amount_minor:
+        if credited_by_event.get(ev.event_id, 0) != ev.amount_minor:
             bad.append(ev.event_id)
     controls.append({"name": "Split conservation: credited cents == collected cents for every collection",
                      "passed": not bad, "detail": f"{len(bad)} mismatching collections" if bad else "all collections conserve"})
@@ -567,8 +586,7 @@ def _controls(period, lines, target_items, holds, excluded, inp, orig_lines, ref
         ev = it.event
         if ev.event_type != "REFUND" or ev.event_id in held:
             continue
-        rev = sum(ln["credit_reversed_minor"] for ln in lines if ln["event_id"] == ev.event_id)
-        if rev != ev.amount_minor:
+        if reversed_by_event.get(ev.event_id, 0) != ev.amount_minor:
             bad.append(ev.event_id)
     controls.append({"name": "Refund conservation: credit reversed == refunded cents for every refund",
                      "passed": not bad, "detail": f"{len(bad)} mismatching refunds" if bad else "all refunds conserve"})

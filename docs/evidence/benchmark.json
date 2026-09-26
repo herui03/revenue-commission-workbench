@@ -1,0 +1,104 @@
+{
+  "n_events": 10000,
+  "seed": 20260926,
+  "timings": {
+    "import_all_files_s": 1.033,
+    "draft_compute_6_months_s": 3.03,
+    "calculate_submit_close_6_months_s": 13.0,
+    "per_month_calculate_submit_close_s": {
+      "2026-01": 1.379,
+      "2026-02": 1.674,
+      "2026-03": 2.114,
+      "2026-04": 2.218,
+      "2026-05": 2.424,
+      "2026-06": 3.192
+    },
+    "oracle_s": 0.264,
+    "total_wall_s": 22.442
+  },
+  "controls": {
+    "events": {
+      "collections": 8750,
+      "refunds": 1250,
+      "fully_refunded_collections": 366
+    },
+    "reps": 40,
+    "contracts": 1500,
+    "multi_rep_splits": 626,
+    "calc_lines_in_closed_snapshots": 15178,
+    "collected_minor": {
+      "SGD": 2619282667,
+      "USD": 2230721042
+    },
+    "credited_minor": {
+      "SGD": 2619282667,
+      "USD": 2230721042
+    },
+    "credit_conserved": true,
+    "refunded_minor": {
+      "SGD": 235281809,
+      "USD": 201603803
+    },
+    "credit_reversed_minor": {
+      "SGD": 235281809,
+      "USD": 201603803
+    },
+    "refund_conserved": true,
+    "engine_controls_all_passed": true,
+    "oracle_keys_compared": 480,
+    "oracle_keys_matching": 480,
+    "draft_equals_closed": true,
+    "payables_minor": {
+      "SGD": 194429905,
+      "USD": 164500479
+    },
+    "audit_chain": {
+      "ok": true,
+      "entries": 30,
+      "broken_at_seq": null,
+      "head": "67b9b979e14368609803f3146d812f40faf9adf2091f4c1bcdcfc99b711bdac6"
+    },
+    "shuffled_import_same_totals": true
+  },
+  "imports": {
+    "reps": {
+      "status": "COMMITTED",
+      "rows": 40,
+      "accepted": 40
+    },
+    "plans": {
+      "status": "COMMITTED",
+      "rows": 4,
+      "accepted": 4
+    },
+    "assignments": {
+      "status": "COMMITTED",
+      "rows": 40,
+      "accepted": 40
+    },
+    "contracts": {
+      "status": "COMMITTED",
+      "rows": 1500,
+      "accepted": 1500
+    },
+    "splits": {
+      "status": "COMMITTED",
+      "rows": 2282,
+      "accepted": 2282
+    },
+    "cash_events": {
+      "status": "COMMITTED",
+      "rows": 10000,
+      "accepted": 10000
+    }
+  },
+  "environment": {
+    "python": "3.11.15",
+    "sqlite": "3.45.1",
+    "os": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "logical_cpus": 4,
+    "note": "single process, single thread"
+  },
+  "digest": "b74b7a6b003247c1384e385fa934693b9b21b1f45f22fcb61de933955c6da99f"
+}

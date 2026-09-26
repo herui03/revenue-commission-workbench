@@ -176,6 +176,29 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_reset_demo(args) -> int:
+    """DESTRUCTIVE (explicit only): back up the database file, then recreate it with demo stage 1."""
+    if not args.yes:
+        print("Refusing to reset without --yes. This replaces the demo database (a backup copy is kept).",
+              file=sys.stderr)
+        return 5
+    db_file = Path(args.db)
+    if db_file.exists():
+        import shutil
+        from datetime import datetime
+        backup_dir = db_file.parent / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup = backup_dir / f"{db_file.stem}-{datetime.now().strftime('%Y%m%d-%H%M%S')}{db_file.suffix}"
+        shutil.copy2(db_file, backup)
+        print(f"Backup of the old database: {backup}")
+    conn = demo.fresh_db(db_file)
+    for r in demo.load_stage(conn, 1):
+        print("  " + r.summary())
+    conn.close()
+    print(f"Demo database reset to stage 1 at {db_file}")
+    return 0
+
+
 def cmd_serve(args) -> int:
     try:
         from .web import create_app
@@ -232,6 +255,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--reset-demo", action="store_true", help="DESTRUCTIVE: delete the database and re-seed stage 1")
     s.add_argument("--yes", action="store_true", help="confirm --reset-demo")
     s.set_defaults(fn=cmd_serve)
+
+    s = sub.add_parser("reset-demo", help="DESTRUCTIVE: back up, then recreate the database with demo stage 1")
+    s.add_argument("--yes", action="store_true", help="required confirmation")
+    s.set_defaults(fn=cmd_reset_demo)
 
     s = sub.add_parser("import", help="import a CSV")
     s.add_argument("kind", choices=sorted(importer.FILE_KINDS))
