@@ -27,11 +27,11 @@ from typing import Any, Callable
 
 from . import db
 from .money import CURRENCIES, MoneyFormatError, parse_amount, parse_percent_to_bps
-from .periods_util import last_closed_period, month_end, period_of, period_start
+from .periods_util import MAX_YEAR, MIN_YEAR, is_period, is_supported_date, last_closed_period, month_end, period_of, \
+    period_start
 
 ID_RE = re.compile(r"^[A-Z0-9][A-Z0-9_-]{0,39}$")
 DATE_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")  # ASCII digits only (D-001)
-PERIOD_RE = re.compile(r"^[0-9]{4}-(0[1-9]|1[0-2])$")
 MAX_FILE_BYTES = 5 * 1024 * 1024
 MAX_ROWS = 200_000
 
@@ -141,10 +141,14 @@ def _date(row: RowResult, col: str, value: str, *, required: bool = True) -> dat
         row.fail("DATE_FORMAT", f"{col} {v!r} must be an ISO date YYYY-MM-DD")
         return None
     try:
-        return date.fromisoformat(v)
+        d = date.fromisoformat(v)
     except ValueError:
         row.fail("DATE_FORMAT", f"{col} {v!r} is not a real calendar date")
         return None
+    if not is_supported_date(d):
+        row.fail("DATE_OUT_OF_RANGE", f"{col} {v!r} is outside the supported years {MIN_YEAR}-{MAX_YEAR}")
+        return None
+    return d
 
 
 def _currency(row: RowResult, value: str) -> str | None:
@@ -316,8 +320,8 @@ def _v_payouts(row: RowResult, ctx: Ctx) -> None:
     rec = _id(row, "record_id", row.raw["record_id"])
     rid = _id(row, "rep_id", row.raw["rep_id"])
     per = (row.raw["period"] or "").strip()
-    if not PERIOD_RE.fullmatch(per):
-        row.fail("PERIOD_FORMAT", f"period {per!r} must be YYYY-MM")
+    if not is_period(per):
+        row.fail("PERIOD_FORMAT", f"period {per!r} must be YYYY-MM with a real month, years {MIN_YEAR}-{MAX_YEAR}")
         per = None
     ccy = _currency(row, row.raw["currency"])
     amt = _amount(row, "amount", row.raw["amount"], allow_negative=True, positive=False)

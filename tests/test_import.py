@@ -1,6 +1,7 @@
 """Import validation, idempotency, quarantine, strict atomicity and control totals."""
 import json
 import random
+import sqlite3
 import unittest
 
 from rcw import importer, services
@@ -87,6 +88,68 @@ class SameDayRefundTests(unittest.TestCase):
                     src = {e: conn.execute("SELECT source_row FROM cash_events WHERE event_id = ?", (e,)).fetchone()[0]
                            for e in ("A-REFUND", "Z-COLLECT")}
                     self.assertEqual(src["A-REFUND"], 2 if rows[0].startswith("A-") else 3)   # provenance kept
+
+
+class CalendarRangeTests(unittest.TestCase):
+    """R-5 (external reviewer, executed): invalid calendar periods crashed imports or were persisted."""
+
+    def test_payout_period_validation_quarantines_instead_of_crashing(self):
+        conn = new_conn()
+        load_standard(conn)
+        bad = ["0000-01", "2026-13", "2026-00", "2026-1", "20260-01", "2100-01", "1999-12", "2026-04 "]
+        rows = "".join(f"BAD{i},REP-A,{p},SGD,10,Synthetic register,Invalid period\n" for i, p in enumerate(bad))
+        r = imp(conn, "recorded_payouts", "record_id,rep_id,period,currency,amount,source_system,memo\n" + rows)
+        self.assertEqual(r.status, "COMMITTED_WITH_QUARANTINE")
+        for row in r.rows:
+            with self.subTest(row=row["key"]):
+                if row["key"] == ["BAD7"]:          # trailing space is stripped -> valid period
+                    self.assertEqual(row["outcome"], "ACCEPTED")
+                else:
+                    self.assertEqual(row["outcome"], "QUARANTINED")
+                    self.assertIn("PERIOD_FORMAT", [c["code"] for c in row["reasons"]])
+        r = imp(conn, "recorded_payouts", "record_id,rep_id,period,currency,amount,source_system,memo\n"
+                "BADYEAR,REP-A,0000-01,SGD,10,Synthetic register,Invalid year\n", mode="strict")
+        self.assertEqual(r.status, "REJECTED")
+
+    def test_dates_outside_supported_years_are_quarantined(self):
+        conn = new_conn()
+        load_standard(conn)
+        r = cash(conn, ["E1,COLLECTION,K-SGD-A,0001-01-01,SGD,10.00,,,", "E2,COLLECTION,K-SGD-A,1999-12-31,SGD,10.00,,,"])
+        self.assertEqual(r.quarantined, 2)
+        self.assertTrue(all("DATE_OUT_OF_RANGE" in [c["code"] for c in x["reasons"]] for x in r.rows))
+
+    def test_workflow_endpoints_reject_invalid_periods_without_writes(self):
+        from rcw import db as rdb
+        conn = new_conn()
+        load_standard(conn)
+        before = rdb.db_fingerprint(conn)
+        for p in ("0000-01", "2026-13", "2026-4", "2100-01", "", None, "2026-04\n"):
+            for fn, args in ((services.calculate_period, (conn, p, "preparer")),
+                             (services.submit_for_review, (conn, p, "preparer")),
+                             (services.close_period, (conn, p, "reviewer")),
+                             (services.return_to_draft, (conn, p, "reviewer", "a long enough reason")),
+                             (services.compute, (conn, p)),
+                             (services.add_adjustment, (conn, p, "REP-A", "SGD", 5, "COMMISSION_ADJUSTMENT",
+                                                        "a long enough reason", "x"))):
+                with self.subTest(fn=fn.__name__, period=p):
+                    with self.assertRaises(services.WorkflowError) as ctx:
+                        fn(*args)
+                    self.assertEqual(ctx.exception.code, "BAD_PERIOD")
+        for d in ("0001-01-01", "2100-01-01", "2026-02-30", "20260101", "garbage"):
+            with self.subTest(business_date=d), self.assertRaises(services.WorkflowError):
+                services.set_business_date(conn, d, "x")
+        self.assertEqual(rdb.db_fingerprint(conn), before)
+        with self.assertRaises(sqlite3.IntegrityError):
+            conn.execute("INSERT INTO periods(period, status) VALUES ('0000-01', 'OPEN')")
+
+    def test_period_boundaries_cannot_leave_supported_range(self):
+        from rcw.periods_util import PeriodRangeError, next_period, prev_period
+        self.assertEqual(next_period("2026-12"), "2027-01")
+        self.assertEqual(prev_period("2026-01"), "2025-12")
+        with self.assertRaises(PeriodRangeError):
+            next_period("2099-12")
+        with self.assertRaises(PeriodRangeError):
+            prev_period("2000-01")
 
 
 class FileLevelTests(unittest.TestCase):

@@ -21,6 +21,7 @@ from typing import Any
 from . import db
 from .engine import CLAWBACK, EARNING, LATE_CLAWBACK, LATE_EARNING, MANUAL_ADJUSTMENT
 from .money import format_minor, half_up_div
+from .periods_util import is_period
 from .repo import run_lines
 from .services import WorkflowError, compute, get_snapshot, is_closed
 
@@ -46,6 +47,8 @@ TRANSITIONS = {
 def expected_for(conn: sqlite3.Connection, period: str, *, as_of_run: int | None = None
                  ) -> tuple[dict[tuple[str, str], int], str, list[dict[str, Any]]]:
     """Expected payouts, their basis, and the lines they come from (read-only)."""
+    if not is_period(period):
+        raise WorkflowError("BAD_PERIOD", f"{period!r} is not a supported YYYY-MM period")
     if as_of_run is not None:
         run = conn.execute("SELECT * FROM calc_runs WHERE run_id = ? AND period = ?", (as_of_run, period)).fetchone()
         if run is None:

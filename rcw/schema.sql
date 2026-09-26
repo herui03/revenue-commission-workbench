@@ -113,7 +113,7 @@ CREATE INDEX IF NOT EXISTS ix_cash_events_original ON cash_events(original_event
 CREATE TABLE IF NOT EXISTS recorded_payouts (
     record_id     TEXT PRIMARY KEY,
     rep_id        TEXT NOT NULL REFERENCES reps(rep_id),
-    period        TEXT NOT NULL,
+    period        TEXT NOT NULL CHECK (length(period) = 7 AND period GLOB '20[0-9][0-9]-[01][0-9]' AND CAST(substr(period, 6, 2) AS INTEGER) BETWEEN 1 AND 12),
     currency      TEXT NOT NULL,
     amount_minor  INTEGER NOT NULL,
     source_system TEXT NOT NULL,
@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS quarantine_rows (
 );
 
 CREATE TABLE IF NOT EXISTS periods (
-    period          TEXT PRIMARY KEY,
+    period          TEXT PRIMARY KEY CHECK (length(period) = 7 AND period GLOB '20[0-9][0-9]-[01][0-9]' AND CAST(substr(period, 6, 2) AS INTEGER) BETWEEN 1 AND 12),  -- defense in depth for R-5
     status          TEXT NOT NULL CHECK (status IN ('OPEN', 'IN_REVIEW', 'CLOSED')),
     review_run_id   INTEGER REFERENCES calc_runs(run_id),
     prepared_by     TEXT,
@@ -221,7 +221,7 @@ CREATE TABLE IF NOT EXISTS event_decisions (
 
 CREATE TABLE IF NOT EXISTS adjustments (
     adj_id       INTEGER PRIMARY KEY AUTOINCREMENT,
-    period       TEXT NOT NULL,
+    period       TEXT NOT NULL CHECK (length(period) = 7 AND period GLOB '20[0-9][0-9]-[01][0-9]' AND CAST(substr(period, 6, 2) AS INTEGER) BETWEEN 1 AND 12),
     rep_id       TEXT NOT NULL REFERENCES reps(rep_id),
     currency     TEXT NOT NULL,
     amount_minor INTEGER NOT NULL CHECK (amount_minor <> 0),

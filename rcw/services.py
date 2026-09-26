@@ -13,7 +13,8 @@ from typing import Any
 
 from . import db, engine
 from .money import CURRENCIES
-from .periods_util import is_period, last_closed_period, month_end, next_period, period_of
+from .periods_util import MAX_YEAR, MIN_YEAR, is_period, is_supported_date, last_closed_period, month_end, \
+    next_period, period_of
 from .repo import activity_periods, load_engine_input, run_lines
 
 POLICY_SUMMARY = (
@@ -36,8 +37,10 @@ class WorkflowError(Exception):
 
 
 def _require_period(period: str) -> None:
+    """Every workflow entry point validates its period here, before any write (R-5)."""
     if not is_period(period):
-        raise WorkflowError("BAD_PERIOD", f"{period!r} is not a YYYY-MM period")
+        raise WorkflowError("BAD_PERIOD", f"{period!r} is not a YYYY-MM period with a real month in years "
+                            f"{MIN_YEAR}-{MAX_YEAR}")
 
 
 def business_date(conn: sqlite3.Connection) -> date:
@@ -48,8 +51,10 @@ def business_date(conn: sqlite3.Connection) -> date:
 def set_business_date(conn: sqlite3.Connection, new_date: str, actor: str) -> None:
     try:
         d = date.fromisoformat(new_date)
-    except ValueError as exc:
+    except (TypeError, ValueError) as exc:
         raise WorkflowError("BAD_DATE", f"{new_date!r} is not an ISO date") from exc
+    if not is_supported_date(d) or len(new_date) != 10:
+        raise WorkflowError("BAD_DATE", f"{new_date!r} must be YYYY-MM-DD within years {MIN_YEAR}-{MAX_YEAR}")
     with db.tx(conn):
         old = db.get_setting(conn, "business_date")
         if old and d < date.fromisoformat(old):
@@ -169,6 +174,7 @@ def submit_for_review(conn: sqlite3.Connection, period: str, actor: str) -> int:
 
 
 def return_to_draft(conn: sqlite3.Connection, period: str, actor: str, reason: str) -> None:
+    _require_period(period)
     _require_reason(reason)
     with db.tx(conn):
         prow = period_row(conn, period)
