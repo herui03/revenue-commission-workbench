@@ -1,6 +1,6 @@
 # 01 · Scope, requirements and acceptance criteria
 
-> Written **before** the calculation engine. The hand-computed expectations it
+> Written **before** the calculation engine (commit f59e777). Later clarifications are marked *(updated)*. The hand-computed expectations it
 > references (`tests/expected/hand_calculations.json`) were committed in the
 > same first commit, so the git history shows the answers existed before the code.
 
@@ -58,7 +58,7 @@ IDs are referenced from tests and from the UAT matrix (`docs/05_uat_matrix.md`).
 | IMP-04 | Row idempotency / conflicts | Identical existing row → `DUPLICATE_ROW` skip; same id, different content → quarantined, existing row untouched |
 | IMP-05 | Strict (atomic) mode | Any invalid row → nothing committed; full error list returned |
 | IMP-06 | Quarantine mode + control totals | rows read = accepted + duplicate + quarantined, and amount totals reconcile per currency |
-| IMP-07 | Validation | header (missing/duplicate/unknown), ISO dates, amount format (no float, ≤2 dp, no separators), IDs, currency, orphans, split totals, currency mismatch, refund before collection, over-refund, overlapping assignments, future-dated rows, retroactive plan change into a closed period |
+| IMP-07 | Validation | header (missing/duplicate/unknown), ISO dates within 2000-2099, amount format (no float, ≤2 dp, no separators, ASCII digits), IDs, currency, orphans, split totals, currency mismatch, refund before collection, over-refund, ambiguous assignments (same rep + same start date), future-dated rows, retroactive plan change into a closed period |
 | IMP-08 | Collision-safe keys | IDs restricted to `[A-Z0-9_-]{1,40}`; composite keys hashed as canonical JSON arrays, never by string concatenation |
 
 ### Calculation
@@ -80,7 +80,7 @@ IDs are referenced from tests and from the UAT matrix (`docs/05_uat_matrix.md`).
 | PER-01 | Draft → review → close | Invalid transitions rejected with a reason |
 | PER-02 | Immutable closed snapshot | Snapshot JSON (inputs, plan versions, lines, controls) + SHA-256; DB triggers block edits |
 | PER-03 | Reproducible export | Closed-period CSV/HTML export byte-identical after later imports, plan changes, adjustments and case resolution |
-| PER-04 | Stale review detection | Close recomputes; if result digest ≠ reviewed run → rejected (`STALE_REVIEW`) |
+| PER-04 | Stale review detection | Close recomputes; if the digest over lines, holds, exclusions, totals, controls, KPIs and inputs ≠ the reviewed run → rejected (`STALE_REVIEW`); the snapshot is built only from the stored reviewed run *(updated after reviewer finding R-2)* |
 | PER-05 | Blocking holds | Close refused while blocking holds exist (eligibility, pending late events, material quarantined cash rows) |
 | PER-06 | Late data after close | Late event → blocking `LATE_EVENT_PENDING` hold in first open period; reviewer posts it as a linked prior-period adjustment (reason required) or excludes it; closed statement untouched |
 | PER-07 | No duplicate close / payables | Second close refused; payables unique per period×rep×currency |

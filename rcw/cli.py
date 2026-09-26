@@ -56,7 +56,10 @@ def cmd_demo(args) -> int:
     print(f"April statement SHA-256 after  later changes: {ev['april_statement_sha256_after']}")
     print(f"April export byte-identical: {ev['april_export_identical']}")
     print(f"Audit chain: {'OK' if ev['audit']['ok'] else 'BROKEN'} ({ev['audit']['entries']} entries)")
-    print(f"\nExports written to {out}/ ; database at {args.db}")
+    evidence = {k: v for k, v in ev.items() if k != "audit"}
+    evidence["audit_chain"] = ev["audit"]
+    (out / "story_evidence.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
+    print(f"\nExports and story_evidence.json written to {out}/ ; database at {args.db}")
     print("Next: `python -m rcw serve` (needs Flask) and open http://127.0.0.1:5057")
     return 0 if ev["april_export_identical"] and ev["audit"]["ok"] else 1
 

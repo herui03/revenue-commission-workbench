@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "n_events": 10000,
+  "timings": {
+    "import_all_files_s": 0.891,
+    "draft_compute_6_months_s": 2.963,
+    "calculate_submit_close_6_months_s": 12.068,
+    "per_month_calculate_submit_close_s": {
+      "2026-01": 1.221,
+      "2026-02": 1.51,
+      "2026-03": 1.768,
+      "2026-04": 2.205,
+      "2026-05": 2.44,
+      "2026-06": 2.923
+    },
+    "oracle_s": 0.253,
+    "total_wall_s": 21.003
+  },
+  "oracle": "480/480"
+}

@@ -1,0 +1,13 @@
+{
+  "_source": "GitHub Actions API (list_workflow_runs / list_workflow_jobs), read by Claude Code on 2026-09-26; the most recent completed run when evidence was built. The final commit's CI is re-checked separately.",
+  "html_url": "https://github.com/herui03/revenue-commission-workbench/actions/runs/36268517727",
+  "run_number": 1,
+  "head_sha": "3668e35c39a04e233363c01b23940892ab6a108c",
+  "conclusion": "success",
+  "jobs": [
+    {"name": "Core (stdlib only, Python 3.10)", "conclusion": "success"},
+    {"name": "Core (stdlib only, Python 3.11)", "conclusion": "success"},
+    {"name": "Core (stdlib only, Python 3.12)", "conclusion": "success"},
+    {"name": "Web UI + browser end-to-end", "conclusion": "success"}
+  ]
+}

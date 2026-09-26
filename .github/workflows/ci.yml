@@ -3,22 +3,25 @@ on:
   push:
   pull_request:
 # Least privilege: read-only token, no secrets, no deployment.
+# Actions pinned to their current major releases (verified 2026-09-26: checkout v7.0.1,
+# setup-python v7.0.0, upload-artifact v7.0.1 — all declare `runs.using: node24`).
+# Runner image pinned to ubuntu-24.04 for reproducibility instead of the moving ubuntu-latest.
 permissions:
   contents: read
 
 jobs:
   core-stdlib:
     name: Core (stdlib only, Python ${{ matrix.python }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         python: ["3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Unit, scenario, workflow and oracle tests (no third-party packages)
@@ -30,12 +33,12 @@ jobs:
 
   web:
     name: Web UI + browser end-to-end
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: python -m pip install -r requirements-dev.txt
@@ -47,7 +50,7 @@ jobs:
         run: python scripts/e2e_browser.py
       - name: Keep screenshots and results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-evidence
           path: |

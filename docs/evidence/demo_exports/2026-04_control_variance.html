@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Control report 2026-04</title><style>
+body{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1c2330;margin:24px;max-width:1200px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;margin:24px 0 8px}h3{font-size:14px;margin:16px 0 6px}
+.banner{padding:8px 12px;border-radius:6px;margin:8px 0 16px;font-weight:600}
+.closed{background:#e7f4ec;border:1px solid #3c8c5a}.draft{background:#fff4de;border:1px solid #c98a12}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:12.5px}
+th,td{border:1px solid #d5dae3;padding:4px 6px;text-align:left;vertical-align:top}
+th{background:#f2f4f8}td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.neg{color:#a1261b}.muted{color:#5b6576;font-size:12px}.pass{color:#2f7a4a}.fail{color:#a1261b;font-weight:600}
+code{font-size:12px;word-break:break-all}
+</style></head><body><h1>Control &amp; variance report - 2026-04</h1>
+<div class="banner closed">CLOSED - frozen snapshot. SHA-256 <code>3bf0b99f4395deb880491d3df1aedfb14b711b4208a0f9c2cc093917f0175bfe</code> (integrity verified). Closed 2026-09-26T20:17:10Z; prepared by label analyst-1, reviewed by label manager-1.</div>
+<h2>Control checks</h2><table><tr><th>Check</th><th>Result</th><th>Detail</th></tr>
+<tr><td>Split conservation: credited cents == collected cents for every collection</td><td class="pass">PASS</td><td>all collections conserve</td></tr>
+<tr><td>Refund conservation: credit reversed == refunded cents for every refund</td><td class="pass">PASS</td><td>all refunds conserve</td></tr>
+<tr><td>Bracket arithmetic: base portion + accelerator portion == credited cash</td><td class="pass">PASS</td><td>all earning lines pass</td></tr>
+<tr><td>Clawback bound: cumulative reversal &lt;= original earning; full refund reverses exactly</td><td class="pass">PASS</td><td>holds for every refunded collection</td></tr>
+<tr><td>Cash reconciliation: cash dated in period == processed + held + excluded</td><td class="pass">PASS</td><td>SGD COLLECTION: dated SGD 16,000.00 = processed SGD 16,000.00 + held SGD 0.00 + excluded SGD 0.00<br>USD COLLECTION: dated USD 17,345.67 = processed USD 17,345.67 + held USD 0.00 + excluded USD 0.00</td></tr>
+</table><h2>Period metrics (per currency, never combined)</h2><table><tr><th>Currency</th><th>Bookings signed</th><th>Cash collected</th><th>Refunds</th><th>Net cash</th><th>Credited to reps</th><th>Commission earned</th><th>Clawbacks</th><th>Late adj.</th><th>Manual adj.</th><th>Expected payouts</th></tr>
+<tr><td>SGD</td><td class="num">SGD 25,000.00</td><td class="num">SGD 16,000.00</td><td class="num">SGD 0.00</td><td class="num">SGD 16,000.00</td><td class="num">SGD 16,000.00</td><td class="num">SGD 860.00</td><td class="num">SGD 0.00</td><td class="num">SGD 0.00</td><td class="num">SGD 0.00</td><td class="num">SGD 860.00</td></tr>
+<tr><td>USD</td><td class="num">USD 9,000.00</td><td class="num">USD 17,345.67</td><td class="num">USD 0.00</td><td class="num">USD 17,345.67</td><td class="num">USD 17,345.67</td><td class="num">USD 939.50</td><td class="num">USD 0.00</td><td class="num">USD 0.00</td><td class="num">USD 0.00</td><td class="num">USD 939.50</td></tr>
+</table>
+<h2>Expected vs recorded payouts (expected basis: CLOSED)</h2><table><tr><th>Rep</th><th>Currency</th><th>Expected</th><th>Recorded</th><th>Variance (recorded - expected)</th></tr>
+<tr><td>REP-AURORA</td><td>SGD</td><td class="num">SGD 660.00</td><td class="num">SGD 660.00</td><td class="num">SGD 0.00</td></tr>
+<tr><td>REP-BIRCH</td><td>SGD</td><td class="num">SGD 200.00</td><td class="num">SGD 200.00</td><td class="num">SGD 0.00</td></tr>
+<tr><td>REP-CEDAR</td><td>USD</td><td class="num">USD 692.59</td><td class="num">USD 620.37</td><td class="num neg">USD −72.22</td></tr>
+<tr><td>REP-DELTA</td><td>USD</td><td class="num">USD 246.91</td><td class="num">USD 246.91</td><td class="num">USD 0.00</td></tr>
+</table><h2>Investigation status (live as of export - not part of any frozen snapshot)</h2><p class=muted>Resolved means the variance is explained. It does not mean money was corrected or paid.</p><table><tr><th>Case</th><th>Rep</th><th>Currency</th><th>Status</th><th>Owner</th><th>Reason code</th></tr>
+<tr><td>VC-0001</td><td>REP-CEDAR</td><td>USD</td><td>RESOLVED</td><td>ops-1</td><td>RATE_ERROR</td></tr>
+</table></body></html>

@@ -248,6 +248,72 @@ def _fin_digest(conn, runs) -> str:
     return hashlib.sha256(json.dumps([list(r) for r in rows]).encode()).hexdigest()
 
 
+def _mm(minor: int) -> str:
+    return f"{minor // 100:,}.{minor % 100:02d}"
+
+
+def write_markdown(res: dict, path: Path) -> None:
+    c, t, e = res["controls"], res["timings"], res["environment"]
+    per = " · ".join(f"{k}: {v} s" for k, v in t["per_month_calculate_submit_close_s"].items())
+    ccys = sorted(c["collected_minor"])
+    money_rows = "\n".join(
+        f"| {ccy} | {_mm(c['collected_minor'][ccy])} | {_mm(c['credited_minor'][ccy])} | {_mm(c['refunded_minor'][ccy])} "
+        f"| {_mm(c['credit_reversed_minor'][ccy])} | {_mm(c['payables_minor'][ccy])} |" for ccy in ccys)
+    path.write_text(f"""# 08 · Benchmark (generated from docs/evidence/benchmark.json — do not edit by hand)
+
+Command: `python3 scripts/benchmark.py` (stdlib only). Seed `{res['seed']}`. Synthetic data only.
+
+## What was run
+* **{res['n_events']:,} cash events**: {c['events']['collections']:,} collections + {c['events']['refunds']:,} refunds
+  ({c['events']['fully_refunded_collections']} collections fully refunded, many partially, some in later months),
+  {c['reps']} reps, {c['contracts']:,} contracts ({c['multi_rep_splits']} with 2-3 rep splits), SGD + USD,
+  6 months, plan v1 then v2 (accelerator 8% → 9% from April).
+* Strict-mode import of every file (rows shuffled) → draft calculation of all 6 months →
+  calculate + submit + close each month in order → compare with the **independent oracle**
+  (`tests/oracle.py`, written separately with Fractions and plain loops) → re-import the same rows
+  in a different order into a second database.
+
+## Correctness controls (arithmetic evidence)
+| Control | Result |
+|---|---|
+| Oracle vs closed snapshots, per period × rep × currency | **{c['oracle_keys_matching']} / {c['oracle_keys_compared']} match** |
+| Credited cents == collected cents (per currency) | {c['credit_conserved']} |
+| Credit reversed == refunded cents (per currency) | {c['refund_conserved']} |
+| Engine control checks in every month | {c['engine_controls_all_passed']} |
+| Draft totals (all months open) == totals after sequential close | {c['draft_equals_closed']} |
+| Shuffled re-import gives identical totals | {c['shuffled_import_same_totals']} |
+| Audit hash chain | {'intact' if c['audit_chain']['ok'] else 'BROKEN'} ({c['audit_chain']['entries']} entries) |
+| Calculation lines frozen in snapshots | {c['calc_lines_in_closed_snapshots']:,} |
+
+| Currency | Collected | Credited | Refunded | Credit reversed | Expected payouts |
+|---|---:|---:|---:|---:|---:|
+{money_rows}
+
+## Runtime on this machine (one run, wall clock)
+| Stage | Seconds |
+|---|---:|
+| Import all files (strict mode, validation + provenance) | {t['import_all_files_s']} |
+| Draft compute of 6 open months | {t['draft_compute_6_months_s']} |
+| Calculate + submit + close, 6 months in order | {t['calculate_submit_close_6_months_s']} |
+| Oracle (reference) | {t['oracle_s']} |
+| **Total benchmark wall time** | **{t['total_wall_s']}** |
+
+Per month (calculate + submit + close): {per}. Close deliberately recomputes the month several
+times (calculate, submit, close stale-check, variance refresh), so it costs more than one draft.
+
+Environment: {e['cpu']}, {e['logical_cpus']} logical CPUs, Python {e['python']}, SQLite {e['sqlite']},
+{e['os']}; {e['note']}.
+
+## What this does and does not show
+* **Shows:** the importer, engine and close workflow keep every cent and every control at 10k events,
+  results are independent of file order, and the timings above on this machine.
+* **Does not show:** real-world validity of the invented policy, performance on other hardware,
+  concurrency, or any time saved for a real team (nothing was measured against a manual process).
+  The oracle shares the policy with the engine, so agreement proves consistency with the *policy*,
+  not that the policy is right.
+""", encoding="utf-8")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--events", type=int, default=10_000)
@@ -261,6 +327,8 @@ def main() -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "benchmark.json").write_text(json.dumps(res, indent=2, default=str), encoding="utf-8")
+    if out.resolve() == (ROOT / "docs" / "evidence").resolve():
+        write_markdown(res, ROOT / "docs" / "08_benchmark.md")
     c = res["controls"]
     ok = (c["credit_conserved"] and c["refund_conserved"] and c["engine_controls_all_passed"]
           and c["oracle_keys_matching"] == c["oracle_keys_compared"] and c["draft_equals_closed"]
