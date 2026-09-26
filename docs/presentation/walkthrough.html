@@ -24,7 +24,7 @@ code{font-size:.85em;overflow-wrap:anywhere}.missing{color:var(--bad)}
 <div class="replay" role="note">DEMO REPLAY — recorded screenshots &amp; numbers from docs/evidence/. Not a live system or live results. Synthetic data.</div>
 <div class="layout"><nav aria-label="Walkthrough"><a href="#problem"><span>0:00</span>The problem</a><a href="#load"><span>0:20</span>Load data — validation is visible</a><a href="#april"><span>0:45</span>April — split sale and threshold crossing</a><a href="#close"><span>1:20</span>Review and close — history is frozen</a><a href="#late"><span>1:40</span>Late data after close — no restatement</a><a href="#refund"><span>2:10</span>Partial refund — clawback at the original rate</a><a href="#variance"><span>2:25</span>Payout variance — explain, don&#x27;t restate</a><a href="#evidence"><span>2:45</span>Evidence and honest limits</a></nav><main>
 <header><h1>Revenue &amp; Commission Operations Workbench</h1>
-<p>3-minute guided walkthrough of a synthetic, independent portfolio prototype (built with AI assistance). Page built 2026-09-26 20:18 UTC
+<p>3-minute guided walkthrough of a synthetic, independent portfolio prototype (built with AI assistance). Page built 2026-09-26 20:19 UTC
 from artifacts: <code>story_evidence.json</code>, <code>e2e_results.json</code>, <code>benchmark.json</code>,
 <code>test_results.txt</code>, <code>ci_run.json</code>, and Playwright screenshots.</p>
 <p>To run it live instead: <code>python3 -m rcw demo</code> (no install) or double-click <code>launch_demo.command</code> on a Mac.</p></header>
@@ -77,7 +77,7 @@ not May's new 9% rate: −80.00. Refunds never restore tier capacity.</p>
 True; refunds conserved: True; import 0.891 s,
 calculate + review + close of 6 months 12.068 s on Intel(R) Xeon(R) Processor @ 2.80GHz
 (4 logical CPUs, Python 3.11.15).</li>
-<li><b>CI:</b> GitHub Actions run #1 on commit <code>3668e35c39a0</code>: Core (stdlib only, Python 3.10) = success, Core (stdlib only, Python 3.11) = success, Core (stdlib only, Python 3.12) = success, Web UI + browser end-to-end = success</li>
+<li><b>CI:</b> GitHub Actions run #2 on commit <code>8e8f7cc5db21</code>: Core (stdlib only, Python 3.10) = success, Core (stdlib only, Python 3.11) = success, Core (stdlib only, Python 3.12) = success, Web UI + browser end-to-end = success</li>
 </ul>
 <p class=warn><b>What this does not prove:</b> that the invented policy matches any real commission plan, market or
 employer; enforced segregation of duties (actors are labels); a tamper-proof audit trail (it is append-only in the app and

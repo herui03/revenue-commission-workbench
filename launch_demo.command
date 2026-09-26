@@ -8,6 +8,9 @@
 #    * never installs packages or changes system settings
 #  Stop the demo: press Ctrl+C in this window (or close the window).
 #  Reset is separate and explicit: reset_demo.command
+#  First time only: if macOS blocks this file ("unidentified developer"),
+#  right-click it in Finder -> Open -> Open.
+#  Terminal fallback: .venv/bin/python -m rcw --db instance/demo_workbench.db serve --seed-if-missing
 # ---------------------------------------------------------------------------
 cd "$(dirname "$0")" || exit 1
 PORT=5057

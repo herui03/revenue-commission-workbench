@@ -31,6 +31,8 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 **Mac:** after the one-time install above, double-click **`launch_demo.command`**. It keeps your
 existing demo database and seeds one only if it is missing; it never installs packages. To start over,
 double-click **`reset_demo.command`** and type `RESET` (a backup is kept in `instance/backups/`).
+If macOS says the file "cannot be opened because it is from an unidentified developer" (normal for
+downloaded scripts), right-click it → **Open** → **Open** once; or use the terminal command above.
 **No server possible?** Open `docs/presentation/walkthrough.html` — an offline **demo replay** built from
 recorded run artifacts (clearly labelled; not live results).
 
