@@ -71,7 +71,7 @@ screenshots and is clearly labelled as a replay, not a live system.
 
 ## Screenshots
 
-Screenshots are recorded outputs of a browser run at commit `8e8f7cc`. Two of them show wording that was
+Screenshots are recorded outputs of a browser run at commit `8e8f7cc`. Four of them show wording that was
 later corrected (numbers unchanged); see [evidence/README.md](evidence/README.md).
 
 | Screen | Link |

@@ -20,7 +20,7 @@ Only user-facing **wording** changed after `8e8f7cc`; no calculation, control or
 | Screenshot | Shows (recorded) | Current application |
 |---|---|---|
 | `01_overview_stage1.png` | guided-demo text "Three rows are quarantined on purpose" | "Four rows are quarantined on purpose, from three planted problems" — the import itself always quarantined 4 rows (2 split rows, 1 cash row, 1 payout row) |
-| `03_april_closed.png` | export card "Generated only from the frozen snapshot: byte-identical every time." | "…unchanged by any later application operation (not protected from tampering by the database-file owner)." |
+| `03_april_closed.png`, `07_may_closed.png`, `13_mobile_period_may.png` (closed-month pages) | export card "Generated only from the frozen snapshot: byte-identical every time." | "…unchanged by any later application operation (not protected from tampering by the database-file owner)." |
 
 To regenerate every artifact from the current code: `./scripts/refresh_evidence.sh` (needs the dev
 requirements and a Chromium for Playwright). The offline replay `../presentation/walkthrough.html`

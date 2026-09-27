@@ -108,7 +108,9 @@ delivered late. April is closed, so the late receipt becomes a <b>blocking hold<
 April's 8% (USD 120.00). April's export is byte-identical before and after:
 <b>{'identical ✓' if story.get('april_export_identical') else 'NOT identical ✗'}</b>
 (SHA-256 <code>{html.escape(str(story.get('april_statement_sha256_after', ''))[:16])}…</code>).</p>
-{img('07_may_closed', 'May closed after the late receipt was posted with a reason')}"""),
+{img('07_may_closed', 'May closed after the late receipt was posted with a reason')}
+<p class=note>Recorded screenshot: its export card also still reads “byte-identical every time” (current wording:
+“unchanged by any later application operation, not protected from tampering by the database-file owner”).</p>"""),
         ("2:10", "Partial refund — clawback at the original rate", "refund", f"""
 <p>A 1,000.00 refund of Aurora's April 2,000.00 collection is reversed against the <i>stored</i> original earning (8%),
 not May's new 9% rate: −80.00. Refunds never restore tier capacity.</p>
