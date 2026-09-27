@@ -1,78 +1,64 @@
-# Revenue & Commission Operations Workbench — overview for recruiters and hiring managers
+# Revenue & Commission Operations Workbench — one-page overview
 
-**In one sentence:** a small web application that shows how a Sales/Revenue Operations analyst can
-work out what each salesperson is owed in commission, explain every number, and lock a finished month
-so later data cannot quietly change it.
+Every month a sales-operations team has to work out what each salesperson is owed in commission,
+explain each amount, and make sure a finished month does not change when late or corrected data
+arrives. This web application does that from spreadsheet (CSV) files. It shows every number's source,
+locks each reviewed month, and turns later changes and payroll differences into recorded, explained
+corrections.
 
-It is a **portfolio prototype built on invented data**. It is not used by any company, is not connected
-to any real payroll, bank or CRM system, and no business results are claimed.
+## The questions it answers
 
-## Who did what
-
-| Role | Who |
+| Question | What the tool does |
 |---|---|
-| Brief, scope and requirements | **Herui** (repository owner) |
-| Code, tests, documentation, screenshots | **Claude Code** (an AI coding assistant) |
-| Independent review — found and reported 5 defects, all fixed | **Codex** (a separate AI reviewer, acting for Herui) |
+| How much money did customers actually pay? This is different from contracts signed or invoices sent. | Shows contracts, payments and refunds separately, per currency. |
+| How much of that earns commission, and for which salesperson? Deals are often shared. | Splits each payment between salespeople to the exact cent and applies the commission plan. |
+| Why is a salesperson's commission different from last time? | Lists refunds, late payments and manual corrections as separate lines, each with its reason. |
+| How do we stop a finished month from being changed afterwards? | Freezes the reviewed month. Later data goes into the next open month as a marked correction. |
+| Why does the payroll system show a different amount? | Opens an investigation case for each difference and suggests a likely cause. |
 
-Herui's own understanding of the design and the numbers is **not claimed here**. It is to be shown by
-Herui directly, for example by running the demo live, walking through a calculation by hand and
-answering questions about the choices below.
+## A normal month (April, from the demo)
 
-## The problem it addresses
-
-At every month-end a sales operations team has to answer:
-
-- How much money did customers actually pay us? This is different from contracts signed or invoices sent.
-- How much of that money earns commission, and for which salesperson? Deals are often shared.
-- Why is a salesperson's commission different from last time? Refunds, late payments, corrections.
-- How do we stop a finished month from being changed afterwards?
-- Why does the payroll system show a different amount from what we calculated?
-
-## A normal flow (April, from the demo)
-
-1. The analyst loads seven spreadsheet files: salespeople, commission plan, which plan each person is on,
-   contracts, deal shares, payments and refunds received, and the payroll register.
+1. The analyst loads seven files: salespeople, commission plan, which plan each person is on,
+   contracts, deal shares, payments and refunds received, and the payroll register. Four rows with
+   planted problems are held back with a reason instead of being silently dropped.
 2. A customer pays **USD 12,345.67**. Two salespeople share that deal 60/40, so they are credited
    **7,407.40** and **4,938.27**. The odd cent goes to whoever is owed the larger fraction, so the
    credited amounts always add up exactly to what the customer paid.
 3. The plan pays 5% on the first 10,000 collected in a month and 8% on anything above that. One
-   salesperson passes 10,000 during April, so part of one payment earns 5% and the rest earns 8%.
-   The screen shows both parts.
-4. The preparer submits April for review. The system will not let the same person close the month,
-   so a second person reviews and **closes** it. April's numbers are then frozen.
+   salesperson passes 10,000 during April with a 5,000.00 payment: 2,592.60 of it earns 5% and
+   2,407.40 earns 8%, which is 322.22 in total. The screen shows both parts.
+4. The preparer submits April for review. The same person cannot also close it, so a second person
+   reviews and **closes** April. Its numbers are then frozen.
 
-## A failure flow (what happens when things go wrong)
+## When something goes wrong
 
-1. In June, a bank feed delivers a payment dated **29 April**, after April was closed.
-2. The system does **not** reopen April. Instead, May shows a red warning and cannot be submitted
-   until someone decides what to do.
-3. A reviewer enters a reason and records the payment as a correction inside May, clearly marked
-   "belongs to April". April's exported statement is exactly the same as before.
-4. Separately, the payroll register paid one salesperson **80.00 more** than calculated. The
-   workbench opens an investigation case and points out that 80.00 is exactly a refund
-   deduction the payroll team missed. Closing the case records the explanation. It does not mean
-   the money has been corrected or paid.
+1. A file loaded in June contains a payment dated **29 April**, after April was closed.
+2. April is **not** reopened. Instead, May shows a blocking warning and cannot be submitted until
+   someone decides what to do.
+3. A reviewer enters a reason and records the payment as a correction inside May, marked as belonging
+   to April. April's exported statement is exactly the same as before.
+4. A customer refunds 1,000 of a 2,000 April payment. The commission taken back is **80.00**, at April's
+   8% rate, even though the plan has since raised that rate to 9%.
+5. The payroll register shows one salesperson receiving **80.00 more** than calculated. The workbench
+   opens an investigation case and points out that 80.00 is exactly the refund deduction payroll missed.
+   Closing the case records the explanation. It does not correct or pay the money.
 
-## What can be shown in 3 minutes
+## The demo in 3 minutes
 
 | Time | What you see |
 |---|---|
-| 0:00 | Load the demo data. Three planted problems (four rows) are held back with a reason instead of being silently dropped. |
-| 0:40 | Calculate April. Open one salesperson's statement and click through from a commission line to the original payment row. |
+| 0:00 | Load the demo data. Four rows from three planted problems are held back, each with a reason. |
+| 0:40 | Calculate April. Open one salesperson's statement and click from a commission line through to the original payment row. |
 | 1:20 | Submit, then try to close as the same person (refused). Close as a second person. |
-| 1:40 | Load the June data. May is blocked by the late April payment until a reasoned decision is made. |
-| 2:10 | A partial refund reduces commission at the original rate, not at the new plan's higher rate. |
+| 1:40 | Load the June data. The late April payment blocks May until a reasoned decision is made. |
+| 2:10 | The partial refund reduces commission at the original rate, not at the new plan's higher rate. |
 | 2:25 | Compare with the payroll register and resolve one difference with a reason. |
 
-A 3-minute script is in [`07_demo_script.md`](07_demo_script.md). If the application cannot be started,
-[`presentation/walkthrough.html`](presentation/walkthrough.html) is an offline replay. It contains recorded
-screenshots and is clearly labelled as a replay, not a live system.
+The spoken script is in [`07_demo_script.md`](07_demo_script.md). An offline replay with recorded
+screenshots, labelled as a replay, is at [`presentation/walkthrough.html`](presentation/walkthrough.html).
+Setup commands are in the [README](../README.md#run-it).
 
 ## Screenshots
-
-Screenshots are recorded outputs of a browser run at commit `8e8f7cc`. Four of them show wording that was
-later corrected (numbers unchanged); see [evidence/README.md](evidence/README.md).
 
 | Screen | Link |
 |---|---|
@@ -97,44 +83,45 @@ later corrected (numbers unchanged); see [evidence/README.md](evidence/README.md
 
 Money is stored as whole cents, never as floating-point decimals, so amounts cannot drift.
 
-## Evidence (all on invented data)
+## Checks
 
-- **Worked examples first:** 16 business scenarios were calculated by hand and saved *before* the
-  calculation code was written. The code reproduces all 16.
-  [Worked examples](../tests/expected/HAND_CALCULATIONS.md).
-- **Automated tests:** 88 tests.
-  - With the web dependencies installed, all 88 pass, plus 301 sub-checks.
-  - Without any installation, 81 run and pass, and the 7 web tests are skipped.
-  - [Test log](evidence/test_results.txt).
-- **Browser check:** a real browser clicks through the whole story and passes 19 checks, including no
-  sideways scrolling on a phone-sized screen. [Results](evidence/e2e_results.json).
-- **Larger data run:** 10,000 invented payments and refunds. A separate, simpler reference calculation
-  agreed with the application on all 480 salesperson-month-currency totals, and no cent was lost.
-  [Benchmark report](08_benchmark.md).
-- **Problems found and fixed:** 11 real defects, each with the test that now guards it: 6 found by the
-  builder's own tests and 5 by the AI reviewer. [Defect log](04_defects_log.md).
-- **What was *not* done:** no testing with real users or a real business. [Test coverage matrix](05_uat_matrix.md).
+- **Worked examples**: 16 scenarios were calculated by hand before the calculation code was written,
+  and the code reproduces all 16 ([worked examples](../tests/expected/HAND_CALCULATIONS.md)).
+- **Automated tests**: 88 tests.
+    - With the web dependencies installed, all 88 pass, plus 301 sub-checks.
+    - With no installation, 81 run and pass, and the 7 web tests are skipped.
+    - See the [test log](evidence/test_results.txt).
+- **Browser check**: a real browser clicks through the whole story and passes 19 checks, including no
+  sideways scrolling on a phone-sized screen ([results](evidence/e2e_results.json)).
+- **Larger data run**: 10,000 generated payments and refunds. A separate, simpler reference
+  calculation agrees with the application on all 480 salesperson-month-currency totals
+  ([benchmark report](08_benchmark.md)).
+- **Defects**: 11 defects found and fixed, each guarded by a test ([defect log](04_defects_log.md)).
 
-These checks show that the arithmetic is consistent with the invented rules. They do not show that
-the rules match any real company's commission plan, or that the tool saves anyone time.
+## Scope and limits
 
-## Limitations
-
-- **User names are labels, not logins.** The "different person must close the month" rule is
-  demonstrated, not enforced by real security.
-- **The change log cannot be edited through the application,** but anyone who has the database file
-  could alter it.
-- **Out of scope:**
-  - payments to salespeople;
-  - currency conversion;
-  - accounting revenue rules;
-  - carrying negative balances forward;
-  - multi-user or cloud hosting.
-- **The commission rules are one invented example.** They are chosen to make the mechanics visible and
-  are documented with alternatives in [`03_policy_decision_log.md`](03_policy_decision_log.md).
+- **Data**: every salesperson, customer, plan and payroll record is invented. The tool is not connected
+  to any real payroll, bank or CRM system, and no business results are claimed.
+- **Rules**: the commission rules are one invented example, chosen to make the mechanics visible.
+  Alternatives are documented in [`03_policy_decision_log.md`](03_policy_decision_log.md).
+- **Validation**: the checks show the arithmetic is consistent with those rules. There has been no
+  testing with real users or real business data ([coverage matrix](05_uat_matrix.md)).
+- **Access control**: user names are labels, not logins, so the "different person must close the
+  month" rule is demonstrated, not enforced by real security.
+- **Change log**: the log can't be edited through the application, but anyone who has the database
+  file could alter it.
+- **Screenshots**: they were recorded from an earlier version of the application. Four of them show
+  on-screen wording that was later changed; the numbers are the same
+  ([provenance](evidence/README.md)).
+- **Out of scope**:
+    - paying salespeople;
+    - currency conversion;
+    - accounting revenue rules;
+    - carrying negative balances forward;
+    - multi-user or cloud hosting.
 
 ## Where to look next
 
-- [README](../README.md): how to run it.
+- [README](../README.md): capabilities, setup and project layout.
 - [Requirements and acceptance criteria](01_requirements_acceptance.md).
 - [Data dictionary](02_data_dictionary.md).
