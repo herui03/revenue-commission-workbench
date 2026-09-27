@@ -1,33 +1,66 @@
 # Revenue & Commission Operations Workbench
 
-> **Recruiters and hiring managers:** start with the one-page [plain-English overview](docs/HR_OVERVIEW.md)
-> — the problem, a normal and a failure flow, the 3-minute demo, screenshots, evidence and limits.
+At month-end, a sales-operations team has to turn customer payments into commission per salesperson,
+explain every amount, and keep a finished month from changing when late or corrected data arrives.
+This workbench imports the month's CSV files and calculates commission on cash collected under a
+versioned plan. It traces every commission line back to its source row and freezes each reviewed month
+as a snapshot. Late payments, refunds and payroll differences become reasoned adjustments and
+investigation cases; closed months are never silently edited.
 
-**Synthetic, independent portfolio prototype** · AI-assisted: directed by Herui, implemented by Claude Code,
-independently reviewed by Codex · Python + SQLite + Flask · not accounting, revenue-recognition, payroll or
-employer software · all data invented.
+Python · SQLite · Flask · runs locally with an invented demo dataset ·
+[one-page plain-English overview](docs/HR_OVERVIEW.md)
 
-**What it answers.** Every month a Revenue/Sales Operations analyst must explain:
+## What it does
 
-| Question | Where the workbench answers it |
+| Step | Behaviour |
 |---|---|
-| What **cash** was collected? (not booked, not invoiced) | Period page — bookings, cash, refunds shown separately, per currency |
-| What is **commission-eligible**, for which rep? | Credit splits (cent-exact), plan assignments, blocking holds |
-| What is **owed per rep** — and why? | Rep statement → every line → cash event → contract → split → plan rule → calculation |
-| **Why did the number change?** | Refund clawbacks at the original rate, late data posted as reasoned adjustments, manual adjustments shown separately |
-| How does **close stop history being rewritten**? | Close freezes the exact reviewed run (SHA-256 snapshot); stale reviews are refused; closed exports are unchanged by any later application operation (not protected from tampering by whoever owns the database file) |
-| Why does **payroll's recorded payout differ**? | Variance cases with owner, reason code, notes and suggested causes — *resolved ≠ paid* |
+| **Import** | Seven CSV types: reps, plans, plan assignments, contracts, credit splits, cash events, payroll register. Each file is identified by SHA-256, so re-imports are skipped. Invalid rows are quarantined with a reason code, or the whole file is rejected in strict mode. Control totals prove read = accepted + duplicate + quarantined, in rows and in money. |
+| **Calculate** | Commission on cash collected, not bookings or invoices. Shared deals are split to the exact cent, a monthly accelerator applies above a threshold, and refunds reverse the original earning. SGD and USD are never combined. |
+| **Explain** | Per-rep statements. Each line links to its cash event, contract, split, plan rule and calculation. |
+| **Review and close** | Draft → submit → close by a different user label. A review made stale by any data change is refused. The closed month is stored as a SHA-256 snapshot, and its exports come only from that snapshot. |
+| **Late data** | A payment dated in a closed month does not reopen that month. It blocks the next open month until someone posts it as a prior-period adjustment or excludes it; either way a reason is required. |
+| **Payroll variance** | Expected payouts are compared with the payroll register. Each difference becomes a case with owner, reason code, notes and a suggested cause. Resolving a case records the explanation; it does not pay anything. |
+| **Audit and exports** | An append-only, hash-chained change log. CSV/HTML statements and control reports, with spreadsheet-formula protection. |
 
-## Try it in 60 seconds
+The same services run behind a local web UI with a guided demo and behind a command-line interface.
+
+## Example: one salesperson's April in the demo
+
+Cedar is paid on the demo plan: 5% on the first 10,000 collected in a month and 8% on the excess.
+
+1. A customer pays **USD 12,345.67** on a deal shared 60/40 between Cedar and Delta. Cedar is credited
+   **7,407.40** and Delta **4,938.27**. The leftover cent goes to the larger remainder, so the credits add
+   up exactly to the payment. Cedar earns 7,407.40 × 5% = **370.37**.
+2. A later **5,000.00** payment takes Cedar past 10,000. The first 2,592.60 earns 5% and the other
+   2,407.40 earns 8%: 129.63 + 192.592 = 322.222, rounded once for the line to **322.22**. Cedar's
+   April total is **692.59**.
+3. The payroll register shows **620.37** for Cedar. The workbench opens a **−72.22** variance case and
+   suggests the cause: the payout matches 5% on everything, so the 3% accelerator uplift on 2,407.40 is
+   missing.
+
+The rest of the demo plays out in May. A partial refund of an April sale is reversed at April's 8%
+(−80.00), not at the new plan's 9%. A payment dated 29 April arrives after April was closed and blocks
+May until it is posted as an adjustment. At the end of the demo, April's exported statement is
+byte-for-byte unchanged.
+
+## Screenshots
+
+| April closed: frozen snapshot, controls, charts | Late April payment blocks May | Evidence chain for one line |
+|---|---|---|
+| ![April closed](docs/evidence/screenshots/03_april_closed.png) | ![Late hold](docs/evidence/screenshots/06_may_late_hold_blocks_close.png) | ![Evidence](docs/evidence/screenshots/05_line_evidence_threshold_crossing.png) |
+
+The full set of 13 screenshots is in [`docs/evidence/screenshots/`](docs/evidence/screenshots/). They
+were recorded from an earlier commit, and four of them show on-screen wording that was later changed;
+the numbers are the same ([provenance](docs/evidence/README.md)). An offline replay of the demo, built
+from the recorded run, is at [`docs/presentation/walkthrough.html`](docs/presentation/walkthrough.html).
+
+## Run it
 
 ```bash
-# Until the pull request is merged, the code lives on this branch (private repo: you need access):
-git clone --branch claude/vigilant-curie-tsmtx0 https://github.com/herui03/revenue-commission-workbench.git
+git clone https://github.com/herui03/revenue-commission-workbench.git
 cd revenue-commission-workbench
-#   (after the PR is merged into main, a plain `git clone https://github.com/herui03/revenue-commission-workbench.git` works)
-#   (or: unzip the source ZIP and `cd revenue-commission-workbench`)
 
-# 1) No install needed (Python 3.10+ stdlib): play the whole story, write exports to out/demo/
+# 1) No install needed (Python 3.10+ standard library): play the whole story, write exports to out/demo/
 python3 -m rcw demo
 
 # 2) Web UI (needs Flask once):
@@ -36,83 +69,85 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 #    → open http://127.0.0.1:5057  (bound to localhost only)
 ```
 
-**Mac:** after the one-time install above, double-click **`launch_demo.command`**. It keeps your
-existing demo database and seeds one only if it is missing; it never installs packages. To start over,
-double-click **`reset_demo.command`** and type `RESET` (a backup is kept in `instance/backups/`).
-If macOS says the file "cannot be opened because it is from an unidentified developer" (normal for
-downloaded scripts), right-click it → **Open** → **Open** once; or use the terminal command above.
-**No server possible?** Open `docs/presentation/walkthrough.html` — an offline **demo replay** built from
-recorded run artifacts (clearly labelled; not live results).
+**Mac:** after the one-time install above, double-click **`launch_demo.command`**. It keeps an existing
+demo database, seeds one only if it is missing, and never installs packages. To start over, double-click
+**`reset_demo.command`** and type `RESET`; a backup is kept in `instance/backups/`. If macOS says the file
+"cannot be opened because it is from an unidentified developer", right-click it → **Open** → **Open**
+once, or use the terminal command above.
 
-## The demo story (guided in the UI, ~3 minutes)
+The UI guides the three-minute demo story; a timed script is in
+[`docs/07_demo_script.md`](docs/07_demo_script.md).
 
-1. **April** — a 60/40 **split sale** (USD 12,345.67 → 7,407.40 / 4,938.27), a **threshold crossing**
-   (2,592.60 at 5% + 2,407.40 at 8%), three planted data problems (four rows) quarantined on purpose. Preparer submits; a different
-   reviewer label closes.
-2. **June data arrives** — plan v2 (accelerator 9% from May), a **partial refund** of an April sale
-   (−80.00, reversed at the original 8%), and a receipt dated 29 April that arrived **after April closed**:
-   May is blocked until a reviewer posts it as a prior-period adjustment with a reason. April's export
-   stays byte-identical.
-3. **Variance** — the synthetic payout register differs three times (+80.00 missed clawback, −72.22
-   accelerator not paid, −120.00 late adjustment missing); cases suggest the cause; resolving explains,
-   it does not pay.
+## Stack
 
-| April closed (frozen snapshot, controls, charts) | Late April receipt blocks May | Evidence chain for one line |
-|---|---|---|
-| ![April closed](docs/evidence/screenshots/03_april_closed.png) | ![Late hold](docs/evidence/screenshots/06_may_late_hold_blocks_close.png) | ![Evidence](docs/evidence/screenshots/05_line_evidence_threshold_crossing.png) |
+- **Python 3.10+**: the domain engine, importer and CLI use only the standard library.
+- **SQLite**: one local file. Database triggers make source, snapshot and audit tables append-only.
+- **Flask + Jinja**: the web UI, bound to localhost, with CSRF tokens on every form and a
+  Content-Security-Policy.
+- **Money**: integer minor units and basis-point rates, with one half-up rounding per line and no
+  floating point.
+- **Testing**: unittest/pytest, and Playwright for the browser run.
+- **CI**: GitHub Actions with a read-only token. It runs standard-library jobs on Python 3.10, 3.11
+  and 3.12, plus a web and browser job.
 
-## The invented demo policy (one choice, not a rule)
-Cash-based · credit split by contract (largest-remainder cents) · marginal monthly accelerator per
-rep × month × currency (≤ 10,000 at 5%, excess at 8%) · attainment = gross credited collections ·
-refunds reverse the **stored** original earning cumulatively — `half_up(E × refunded ÷ collected)` — so
-partial refunds never drift and never restore tier capacity · integer minor units, one half-up rounding
-per line · SGD and USD never combined. Every decision and its alternatives: `docs/03_policy_decision_log.md`.
+## Checks
 
-## Evidence (developer self-tests — see the UAT matrix for what was *not* tested)
-* **Hand-computed first:** `tests/expected/` was committed before any engine code (see git history).
-* **Automated tests:** 88 tests. With `pip install -r requirements-dev.txt`, `python -m pytest` runs all 88 (plus
-  301 subtests) and they pass. Without any install, `python3 -m unittest discover -s tests -t .` collects the same
-  88 but **skips the 7 Flask web tests**, so 81 run and pass. Coverage: scenarios HC-01…16, validation, stale close,
-  late data, immutability, exports, variance, an independent oracle on seeded random data, order independence.
-* **Browser E2E:** Playwright drives the full story, checks console errors and horizontal overflow at 1440 px and 390 px (`docs/evidence/e2e_results.json`, screenshots).
-* **Benchmark:** 10,000 seeded cash events, oracle match on every rep-month-currency total, runtime and
-  environment in `docs/08_benchmark.md` (arithmetic consistency on synthetic data — not real-world validity).
-* **CI:** GitHub Actions, read-only token, Python 3.10/3.11/3.12 stdlib jobs + web/browser job.
-* **Defects actually found and fixed** (by the builder's own tests and by an independent AI reviewer): `docs/04_defects_log.md`.
+- **Hand calculations first**: 16 scenarios were worked out by hand and committed before the engine
+  code, and the engine reproduces all 16 ([`tests/expected/HAND_CALCULATIONS.md`](tests/expected/HAND_CALCULATIONS.md)).
+- **Automated tests**: 88 tests.
+    - `python -m pytest` with `requirements-dev.txt` installed runs all 88 plus 301 subtests.
+    - `python3 -m unittest discover -s tests -t .` with no install runs 81 and skips the 7 Flask tests.
+- **Browser run**: Playwright clicks through the whole story and passes 19 checks. These include no
+  console errors and no horizontal overflow at 1440 px and 390 px ([`docs/evidence/e2e_results.json`](docs/evidence/e2e_results.json)).
+- **Benchmark**: 10,000 seeded cash events. An independent reference model matches all 480
+  rep-month-currency totals ([`docs/08_benchmark.md`](docs/08_benchmark.md)).
+- **Defect log**: 11 defects found and fixed, each with its root cause and regression test
+  ([`docs/04_defects_log.md`](docs/04_defects_log.md)).
 
-## Docs
+## Documentation
+
 | | |
 |---|---|
-| `docs/HR_OVERVIEW.md` | plain-English one-pager for recruiters and hiring managers |
-| `docs/01_requirements_acceptance.md` | scope, requirements, acceptance criteria |
-| `docs/02_data_dictionary.md` | every CSV column, rule and reason code |
-| `docs/03_policy_decision_log.md` | policy choices, alternatives, trade-offs |
-| `docs/04_defects_log.md` | real defects, root causes, regression tests |
-| `docs/05_uat_matrix.md` | evidence per requirement; external UAT **not performed** |
-| `docs/06_operations_sop.md` | monthly close procedure, error codes, reset/backup |
-| `docs/07_demo_script.md` | 3-minute live script |
-| `docs/08_benchmark.md` | generated benchmark report |
-| `docs/09_cv_bullets.md` | honest CV bullet templates |
-| `docs/zh/学习指南.md` · `docs/zh/面试指南.md` | 中文学习指南 · 15 道面试题与回答 |
+| [`docs/HR_OVERVIEW.md`](docs/HR_OVERVIEW.md) | one-page plain-English overview |
+| [`docs/01_requirements_acceptance.md`](docs/01_requirements_acceptance.md) | scope, requirements, acceptance criteria |
+| [`docs/02_data_dictionary.md`](docs/02_data_dictionary.md) | every CSV column, rule and reason code |
+| [`docs/03_policy_decision_log.md`](docs/03_policy_decision_log.md) | policy choices, alternatives, trade-offs |
+| [`docs/04_defects_log.md`](docs/04_defects_log.md) | defects, root causes, regression tests |
+| [`docs/05_uat_matrix.md`](docs/05_uat_matrix.md) | evidence per requirement |
+| [`docs/06_operations_sop.md`](docs/06_operations_sop.md) | monthly close procedure, error codes, reset and backup |
+| [`docs/07_demo_script.md`](docs/07_demo_script.md) | 3-minute demo script |
+| [`docs/08_benchmark.md`](docs/08_benchmark.md) | generated benchmark report |
 
 ## Layout
-`rcw/` domain (stdlib only): `money.py` (integer money, rounding, allocation) · `importer.py` (validation,
-idempotency, quarantine) · `engine.py` (pure calculation) · `services.py` (calculate → review → close,
-decisions, adjustments) · `variance.py` · `exports.py` · `cli.py` — and `rcw/web/` (Flask UI, same services).
-`data/demo/` synthetic fixtures · `tests/` · `scripts/` (E2E, benchmark, evidence, replay) · `docs/`.
 
-## Honest limitations
-Actor names are **labels**, not logins (segregation of duties is illustrated, not enforced). The audit log
-is append-only and hash-chained inside the app but **not tamper-proof** against whoever owns the SQLite
-file. No payment is executed. No FX, no revenue recognition, no draws/carry-forward, split changes after
-cash need manual adjustments, single-user local SQLite, years 2000–2099 only. Business UAT with real users
-has not been performed.
+`rcw/` is the domain code, which needs only the standard library:
 
-## AI assistance and who did what
-* **Direction & requirements:** Herui (repository owner) — defined the brief, scope and acceptance expectations.
-* **Implementation, tests, docs, evidence:** Claude Code (Anthropic AI).
-* **Independent review:** Codex, an independent AI reviewer acting for Herui, ran static reviews and executed checks on
-  checkpoints and reported defects R-1…R-5 (all fixed with regression tests — `docs/04_defects_log.md`). This was an
-  AI code review, not a human or business review.
-* **Candidate learning still required:** Herui is learning this codebase. Before presenting any part as personal work,
-  reproduce it by hand — the checklist is in `docs/zh/学习指南.md` §11.
+- `money.py`: integer money, rounding, allocation;
+- `importer.py`: validation, idempotency, quarantine;
+- `engine.py`: pure calculation;
+- `services.py`: calculate → review → close, decisions, adjustments;
+- `variance.py`, `exports.py`, `cli.py`.
+
+`rcw/web/` is the Flask UI on the same services. The rest of the repository holds `data/demo/`
+(demo fixtures), `tests/`, `scripts/` (E2E, benchmark, evidence, replay) and `docs/`.
+
+## Scope and limits
+
+- **Data**: all reps, customers, plans and payroll records are invented. The workbench is not
+  connected to any payroll, bank or CRM system, and it executes no payments.
+- **Policy**: the commission rules are one invented example chosen to make the mechanics visible.
+  Alternatives are in [`docs/03_policy_decision_log.md`](docs/03_policy_decision_log.md).
+- **Validation**: the checks above show that results are consistent with the invented rules on invented
+  data. No acceptance testing with real users or business data has been done.
+- **Security model**:
+    - User names are labels, not logins, so the rule that a different person closes the month is
+      illustrated, not enforced.
+    - The hash-chained log can't be edited through the application, but it is not tamper-proof against
+      whoever holds the SQLite file.
+    - The workbench is single-user and local.
+- **Not included**:
+    - currency conversion;
+    - revenue recognition;
+    - draws or negative-balance carry-forward;
+    - automatic handling of split changes after cash is collected, which need a manual adjustment;
+    - periods outside the years 2000–2099.
