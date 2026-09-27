@@ -1,0 +1,49 @@
+Revenue & Commission Operations Workbench - scripted demo (synthetic data, offline)
+
+  [stage 1 import] 01_reps.csv: reps: 4 accepted, 0 duplicate, 0 quarantined of 4 rows (COMMITTED)
+  [stage 1 import] 02_plans.csv: plans: 2 accepted, 0 duplicate, 0 quarantined of 2 rows (COMMITTED)
+  [stage 1 import] 03_assignments.csv: assignments: 4 accepted, 0 duplicate, 0 quarantined of 4 rows (COMMITTED)
+  [stage 1 import] 04_contracts.csv: contracts: 6 accepted, 0 duplicate, 0 quarantined of 6 rows (COMMITTED)
+  [stage 1 import] 05_splits.csv: splits: 6 accepted, 0 duplicate, 2 quarantined of 8 rows (COMMITTED_WITH_QUARANTINE)
+  [stage 1 import] 06_cash_events.csv: cash_events: 5 accepted, 1 duplicate, 1 quarantined of 7 rows (COMMITTED_WITH_QUARANTINE)
+  [stage 1 import] 07_recorded_payouts.csv: recorded_payouts: 4 accepted, 0 duplicate, 1 quarantined of 5 rows (COMMITTED_WITH_QUARANTINE)
+  [April] calculated run #1: 6 lines, 0 blocking holds
+  [April] submitted for review by analyst-1
+  [April] closed by manager-1; snapshot sha256 3bf0b99f4395deb8...
+  [April] variance case VC-0001 (Cedar USD -7222 minor units) assigned and under investigation
+  [stage 2 import] 01_plans_v2.csv: plans: 2 accepted, 0 duplicate, 0 quarantined of 2 rows (COMMITTED)
+  [stage 2 import] 02_cash_events.csv: cash_events: 4 accepted, 0 duplicate, 0 quarantined of 4 rows (COMMITTED)
+  [stage 2 import] 03_recorded_payouts.csv: recorded_payouts: 3 accepted, 0 duplicate, 0 quarantined of 3 rows (COMMITTED)
+  [May] calculated run #2: blocking holds ['LATE_EVENT_PENDING:E-2026-0431']
+  [May] submit refused as expected: BLOCKING_HOLDS
+  [May] late April receipt E-2026-0431 posted into May as a prior-period adjustment (reason recorded)
+  [May] recalculated run #3: 5 lines, 0 blocking holds
+  [May] closed by manager-1; snapshot sha256 67bf96d9574d6c38...
+  [April] case VC-0001 resolved (explained, not paid) after close
+  [April] re-exported after plan v2, late data, May close and case resolution: identical = True
+
+2026-04  status=CLOSED
+  rep                    ccy        credited      earned    clawback       late     manual    expected
+  Aurora (demo rep)      SGD       12,000.00      660.00        0.00       0.00       0.00      660.00
+  Birch (demo rep)       SGD        4,000.00      200.00        0.00       0.00       0.00      200.00
+  Cedar (demo rep)       USD       12,407.40      692.59        0.00       0.00       0.00      692.59
+  Delta (demo rep)       USD        4,938.27      246.91        0.00       0.00       0.00      246.91
+
+2026-05  status=CLOSED
+  rep                    ccy        credited      earned    clawback       late     manual    expected
+  Aurora (demo rep)      SGD       11,000.00      590.00      -80.00       0.00       0.00      510.00
+  Cedar (demo rep)       USD        1,800.00       90.00        0.00     120.00       0.00      210.00
+  Delta (demo rep)       USD        1,200.00       60.00        0.00       0.00       0.00       60.00
+
+Variance cases (recorded - expected):
+  VC-0001 2026-04 Cedar (demo rep)     USD expected    692.59 recorded    620.37 variance    -72.22  RESOLVED
+  VC-0002 2026-05 Aurora (demo rep)    SGD expected    510.00 recorded    590.00 variance    +80.00  OPEN
+  VC-0003 2026-05 Cedar (demo rep)     USD expected    210.00 recorded     90.00 variance   -120.00  OPEN
+
+April statement SHA-256 before later changes: 47cdde9d9d8a5d1f0a1f11108f7c35e32b1cf357fa0fb52902ec3f8cad240a6d
+April statement SHA-256 after  later changes: 47cdde9d9d8a5d1f0a1f11108f7c35e32b1cf357fa0fb52902ec3f8cad240a6d
+April export byte-identical: True
+Audit chain: OK (28 entries)
+
+Exports and story_evidence.json written to docs/evidence/demo_exports/ ; database at /tmp/tmp.4w6wDDP7Ip/demo.db
+Next: `python -m rcw serve` (needs Flask) and open http://127.0.0.1:5057

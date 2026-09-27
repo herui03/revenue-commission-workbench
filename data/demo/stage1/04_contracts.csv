@@ -1,0 +1,7 @@
+contract_id,account_id,account_name,currency,booking_date,booked_amount,product
+C-1001,ACC-KESTREL,Kestrel Analytics (synthetic),SGD,2026-03-18,30000.00,Analytics Suite annual
+C-1002,ACC-HARBOR,Harborline Logistics (synthetic),SGD,2026-04-02,6000.00,Route Optimizer starter
+C-1003,ACC-QUILL,Quillmark Studio (synthetic),USD,2026-03-25,40000.00,Design Cloud enterprise
+C-1004,ACC-ORCHID,Orchid Bay Clinics (synthetic),SGD,2026-04-09,4000.00,Scheduling add-on
+C-1005,ACC-TIDEWAY,Tideway Freight (synthetic),USD,2026-04-11,9000.00,Fleet Telemetry pilot
+C-1006,ACC-LANTERN,Lantern Grove Schools (synthetic),SGD,2026-04-27,15000.00,Campus licence (booked; no cash yet)

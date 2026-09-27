@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "macros.html" import money_td, ltype, csrf with context %}
+{% block title %}Event {{ ev.event_id }}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{{ url_for('ui.index') }}">Overview</a> › Cash event</div>
+<div class="page-head"><div><h1>{{ ev.event_id }}</h1><div class="muted">{{ ev.event_type }} · {{ ev.event_date }} · {{ ev.amount_minor|money(ev.currency) }}</div></div></div>
+<div class="grid g2">
+  <section class="card"><h2>Source row</h2>
+    <dl class="kv">
+      <dt>Contract</dt><dd><a href="{{ url_for('ui.contract', contract_id=ev.contract_id) }}">{{ ev.contract_id }}</a></dd>
+      {% if ev.original_event_id %}<dt>Refund of</dt><dd><a href="{{ url_for('ui.event', event_id=ev.original_event_id) }}">{{ ev.original_event_id }}</a></dd>{% endif %}
+      <dt>Invoice ref</dt><dd>{{ ev.invoice_ref or '—' }}</dd><dt>Memo</dt><dd>{{ ev.memo or '—' }}</dd>
+      <dt>File</dt><dd>{{ batch.original_filename }} (batch <a href="{{ url_for('ui.batch', batch_id=batch.batch_id) }}">#{{ batch.batch_id }}</a>, row {{ ev.source_row }})</dd>
+      <dt>File SHA-256</dt><dd><code>{{ batch.sha256 }}</code></dd>
+      <dt>Row hash</dt><dd><code>{{ ev.row_hash }}</code></dd>
+    </dl>
+  </section>
+  <section class="card"><h2>Decision</h2>
+    {% if decision %}
+      <p><b>{{ decision.decision }}</b> into {{ decision.posting_period }} by {{ decision.actor }} at {{ decision.decided_at }}.</p><p class="small">{{ decision.reason }}</p>
+    {% else %}<p class="small muted">No reviewer decision. Events in open months are calculated normally; events dated in a closed month wait on a blocking hold until someone posts or excludes them.</p>{% endif %}
+    {% if refunds %}<h3>Refunds against this collection</h3>
+      <ul class="small">{% for r in refunds %}<li><a href="{{ url_for('ui.event', event_id=r.event_id) }}">{{ r.event_id }}</a> · {{ r.event_date }} · {{ r.amount_minor|money(r.currency) }}</li>{% endfor %}</ul>
+      <p class="small muted">Refunded {{ refunds|sum(attribute='amount_minor')|money(ev.currency) }} of {{ ev.amount_minor|money(ev.currency) }}.</p>{% endif %}
+  </section>
+</div>
+<section class="card"><h2>Where it shows up in commission</h2>
+  {% if appearances %}
+  <div class="table-wrap"><table><thead><tr><th>Period</th><th>Basis</th><th>Line</th><th>Rep</th><th class="num">Amount</th><th></th></tr></thead><tbody>
+    {% for a in appearances %}<tr><td>{{ a.period }}</td><td class="small">{{ a.basis }}</td><td>{{ ltype(a.line.line_type, TYPE_LABELS) }}</td><td>{{ names.get(a.line.rep_id, a.line.rep_id) }}</td>{{ money_td(a.line.amount_minor, a.line.currency) }}<td><a class="btn sm" href="{{ url_for('ui.line', p=a.period, line_key=a.line.line_key) }}">Evidence</a></td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}<p class="small muted">Not in any calculation yet (it may be on hold, excluded, or pending a late-data decision).</p>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,40 @@
+section,basis,item,currency,metric,value,note
+status,FROZEN,period,,period_status,CLOSED,67bf96d9574d6c3853abb1ded57ca81b6b3161a1bd277bcf691943be5cfd28d9
+control,FROZEN,Split conservation: credited cents == collected cents for every collection,,passed,true,all collections conserve
+control,FROZEN,Refund conservation: credit reversed == refunded cents for every refund,,passed,true,all refunds conserve
+control,FROZEN,Bracket arithmetic: base portion + accelerator portion == credited cash,,passed,true,all earning lines pass
+control,FROZEN,Clawback bound: cumulative reversal <= original earning; full refund reverses exactly,,passed,true,holds for every refunded collection
+control,FROZEN,Cash reconciliation: cash dated in period == processed + held + excluded,,passed,true,see HTML report
+kpi,FROZEN,period,SGD,bookings_count,0,
+kpi,FROZEN,period,SGD,bookings_minor,0.00,
+kpi,FROZEN,period,SGD,cash_collected_minor,11000.00,
+kpi,FROZEN,period,SGD,clawbacks_minor,-80.00,
+kpi,FROZEN,period,SGD,credited_minor,11000.00,
+kpi,FROZEN,period,SGD,earnings_minor,590.00,
+kpi,FROZEN,period,SGD,late_minor,0.00,
+kpi,FROZEN,period,SGD,manual_minor,0.00,
+kpi,FROZEN,period,SGD,net_cash_minor,10000.00,
+kpi,FROZEN,period,SGD,net_payable_minor,510.00,
+kpi,FROZEN,period,SGD,refunds_minor,1000.00,
+kpi,FROZEN,period,USD,bookings_count,0,
+kpi,FROZEN,period,USD,bookings_minor,0.00,
+kpi,FROZEN,period,USD,cash_collected_minor,3000.00,
+kpi,FROZEN,period,USD,clawbacks_minor,0.00,
+kpi,FROZEN,period,USD,credited_minor,3000.00,
+kpi,FROZEN,period,USD,earnings_minor,150.00,
+kpi,FROZEN,period,USD,late_minor,120.00,
+kpi,FROZEN,period,USD,manual_minor,0.00,
+kpi,FROZEN,period,USD,net_cash_minor,3000.00,
+kpi,FROZEN,period,USD,net_payable_minor,270.00,
+kpi,FROZEN,period,USD,refunds_minor,0.00,
+expected_payout,FROZEN,REP-AURORA,SGD,expected,510.00,
+expected_payout,FROZEN,REP-CEDAR,USD,expected,210.00,
+expected_payout,FROZEN,REP-DELTA,USD,expected,60.00,
+recorded_payout,LIVE,REP-AURORA,SGD,recorded,590.00,payout register as of export
+variance,LIVE,REP-AURORA,SGD,recorded_minus_expected,80.00,
+recorded_payout,LIVE,REP-CEDAR,USD,recorded,90.00,payout register as of export
+variance,LIVE,REP-CEDAR,USD,recorded_minus_expected,-120.00,
+recorded_payout,LIVE,REP-DELTA,USD,recorded,60.00,payout register as of export
+variance,LIVE,REP-DELTA,USD,recorded_minus_expected,0.00,
+case_status,LIVE,VC-0002,SGD,status,OPEN,rep=REP-AURORA; owner=; reason=; resolved means explained - not corrected or paid
+case_status,LIVE,VC-0003,USD,status,OPEN,rep=REP-CEDAR; owner=; reason=; resolved means explained - not corrected or paid

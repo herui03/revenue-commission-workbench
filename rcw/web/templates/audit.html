@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Audit log</h1>
+  <p class="muted">Every change writes one entry in the same database transaction. UPDATE/DELETE are blocked by triggers and each entry is hash-chained to the previous one.</p></div></div>
+<div class="callout {{ 'ok' if chain.ok else 'bad' }}">
+  Hash chain check: <b>{{ 'intact' if chain.ok else 'BROKEN at entry #' ~ chain.broken_at_seq }}</b> ({{ chain.entries }} entries).
+  <span class="small">Honest limit: this detects accidental or partial edits. Someone who owns the database file can drop the triggers and rebuild the whole chain; it is not a tamper-proof ledger, and actor names are labels, not authenticated users.</span>
+</div>
+<form method="get" class="row card" style="padding:12px">
+  <label for="ac">Action</label>
+  <select id="ac" name="action" data-autosubmit><option value="">All actions</option>{% for a in actions %}<option {{ 'selected' if a == action }}>{{ a }}</option>{% endfor %}</select>
+  <noscript><button class="btn sm" type="submit">Filter</button></noscript>
+  <input type="text" placeholder="Filter visible rows…" data-filter="#audit-table" aria-label="Filter rows">
+</form>
+<section class="card">
+  {% if rows %}
+  <div class="table-wrap"><table id="audit-table">
+    <thead><tr><th>#</th><th>When (UTC)</th><th>Actor label</th><th>Action</th><th>Entity</th><th>Details</th><th>Hash</th></tr></thead>
+    <tbody>{% for r in rows %}
+      <tr><td>{{ r.seq }}</td><td class="small">{{ r.ts }}</td><td>{{ r.actor }}</td><td class="small"><b>{{ r.action }}</b></td><td class="small">{{ r.entity_type }} {{ r.entity_id }}</td>
+        <td class="wrap-any small"><code>{{ r.details|tojson }}</code></td><td><code>{{ r.hash[:10] }}…</code></td></tr>
+    {% endfor %}</tbody></table></div>
+  {% else %}<div class="empty small">No audit entries yet.</div>{% endif %}
+</section>
+{% endblock %}

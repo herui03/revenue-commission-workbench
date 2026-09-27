@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "macros.html" import ltype %}
+{% block title %}Evidence {{ ln.line_key }}{% endblock %}
+{% block content %}
+{% set d = ln.detail %}
+<div class="crumbs"><a href="{{ url_for('ui.index') }}">Overview</a> › <a href="{{ url_for('ui.period', p=p) }}">{{ p }}</a> ›
+  {% if ln.rep_id %}<a href="{{ url_for('ui.statement', p=p, rep=ln.rep_id, ccy=ln.currency) }}">Statement</a> › {% endif %}Evidence</div>
+<div class="page-head">
+  <div><div class="row"><h1 style="margin:0">{{ ln.amount_minor|money(ln.currency) }}</h1>{{ ltype(ln.line_type, TYPE_LABELS) }}</div>
+    <div class="muted">Line <code>{{ ln.line_key }}</code> · {{ names.get(ln.rep_id, ln.rep_id) if ln.rep_id else '' }} · posted in {{ ln.period }}{% if ln.original_period != ln.period %} for {{ ln.original_period }}{% endif %}</div></div>
+</div>
+<div class="callout {{ 'ok' if frozen else 'warn' }} small">{{ 'Evidence below is read from the frozen close snapshot (inputs as they were at close).' if frozen else 'Draft evidence from current inputs — can change until close.' }}</div>
+<p>{{ explain }}</p>
+
+<div class="chain">
+{% if ln.line_type != 'MANUAL_ADJUSTMENT' %}
+  <div class="link">
+    <h3><span class="no">1</span>Cash event {% if ev %}<a href="{{ url_for('ui.event', event_id=ev.event_id) }}">{{ ev.event_id }}</a>{% endif %}</h3>
+    {% if ev %}
+    <dl class="kv">
+      <dt>Type</dt><dd>{{ ev.event_type }} — {{ 'money received from the customer' if ev.event_type == 'COLLECTION' else 'money returned to the customer' }}</dd>
+      <dt>Date (business)</dt><dd>{{ ev.event_date }}</dd>
+      <dt>Amount</dt><dd>{{ ev.amount_minor|money(ev.currency) }}</dd>
+      {% if ev.original_event_id %}<dt>Refund of</dt><dd><a href="{{ url_for('ui.event', event_id=ev.original_event_id) }}">{{ ev.original_event_id }}</a>{% if orig %} ({{ orig.amount_minor|money(orig.currency) }} on {{ orig.event_date }}){% endif %}</dd>{% endif %}
+      <dt>Invoice ref</dt><dd>{{ ev.invoice_ref or '—' }} <span class="muted small">(informational: invoices are not a commission basis here)</span></dd>
+      <dt>Memo</dt><dd>{{ ev.memo or '—' }}</dd>
+      <dt>Provenance</dt><dd>import batch #{{ ev.batch_id }}, source row {{ ev.source_row }}{% if batch %} · file “{{ batch.original_filename }}” · SHA-256 <code>{{ batch.sha256[:16] }}…</code> · imported {{ batch.imported_at }}{% endif %}</dd>
+      <dt>Row hash</dt><dd><code>{{ ev.row_hash }}</code></dd>
+    </dl>
+    {% endif %}
+  </div>
+  <div class="link">
+    <h3><span class="no">2</span>Contract {% if contract %}<a href="{{ url_for('ui.contract', contract_id=contract.contract_id) }}">{{ contract.contract_id }}</a>{% endif %}</h3>
+    {% if contract %}
+    <dl class="kv">
+      <dt>Account</dt><dd>{{ contract.account_name }} ({{ contract.account_id }})</dd>
+      <dt>Booked</dt><dd>{{ contract.booked_amount_minor|money(contract.currency) }} on {{ contract.booking_date }} <span class="muted small">— a booking, not cash; not commissionable by itself</span></dd>
+      <dt>Product</dt><dd>{{ contract.product }}</dd>
+    </dl>
+    {% endif %}
+  </div>
+  <div class="link">
+    <h3><span class="no">3</span>Credit split</h3>
+    <div class="table-wrap"><table><thead><tr><th>Rep</th><th class="num">Split</th><th class="num">Exact share</th><th class="num">Credited cents</th></tr></thead><tbody>
+      {% for s in split %}
+      <tr {% if s.rep_id == ln.rep_id %}style="font-weight:650"{% endif %}><td>{{ names.get(s.rep_id, s.rep_id) }}</td><td class="num">{{ s.split_bps|bps }}</td>
+        <td class="num">{% if s.exact_share %}{{ s.exact_share }} ¢{% endif %}</td>
+        <td class="num">{{ d.credits_all[s.rep_id] if d.credits_all is defined else '' }}</td></tr>
+      {% endfor %}
+    </tbody></table></div>
+    <p class="small muted">Rule: floor every exact share, then give leftover cents to the largest fractional remainders (ties → smaller rep id). Credited cents always add up to the collected cents. {% if 'CLAWBACK' in ln.line_type %}Refund cash is allocated by each rep's not-yet-reversed credit, so a full refund returns everyone to exactly zero.{% endif %}</p>
+  </div>
+  <div class="link">
+    <h3><span class="no">4</span>Plan rule</h3>
+    {% if plan %}
+    <dl class="kv">
+      <dt>Plan version</dt><dd>{{ plan.plan_id }} v{{ plan.version }} ({{ plan.currency }}), effective from {{ plan.effective_from }} — {{ plan.description }}</dd>
+      <dt>Rates</dt><dd>{{ plan.base_rate_bps|bps }} up to {{ plan.threshold_minor|money(plan.currency) }} per rep per month, {{ plan.accel_rate_bps|bps }} above</dd>
+      {% if assignment %}<dt>Assignment</dt><dd>{{ assignment.assignment_id }}: {{ assignment.rep_id }} → {{ assignment.plan_id }} from {{ assignment.effective_from }}{{ ' to ' ~ assignment.effective_to if assignment.effective_to else ' (open-ended)' }}</dd>{% endif %}
+    </dl>
+    {% endif %}
+  </div>
+  <div class="link">
+    <h3><span class="no">5</span>Calculation</h3>
+    {% if ln.line_type in ('EARNING', 'LATE_EARNING') %}
+<div class="formula">attainment before  = {{ d.attainment_before_minor|amt }}   (gross positive credited cash, {{ ln.original_period }}, {{ ln.currency }})
+room to threshold  = max(0, {{ d.threshold_minor|amt }} - {{ d.attainment_before_minor|amt }})
+below threshold    = {{ ln.base_portion_minor|amt }} × {{ ln.base_rate_bps|bps }}
+above threshold    = {{ ln.accel_portion_minor|amt }} × {{ ln.accel_rate_bps|bps }}
+exact              = {{ ln.exact_amount }} minor units
+rounded (half-up, once per line) = {{ ln.amount_minor }} minor units = {{ ln.amount_minor|money(ln.currency) }}   (rounding {{ d.rounding_delta }})</div>
+    {% elif 'CLAWBACK' in ln.line_type %}
+<div class="formula">original earning E = {{ d.original_earning_minor|amt }}   (line {{ d.original_line_key }}, {{ d.original_period }})
+collection x       = {{ d.original_collection_minor|amt }}
+refunded before    = {{ d.refunded_before_minor|amt }}   →  after this refund = {{ d.refunded_after_minor|amt }}
+cumulative reversal after  = half_up(E × {{ d.refunded_after_minor|amt }} / x) = {{ d.cumulative_reversal_after_minor|amt }}
+cumulative reversal before = half_up(E × {{ d.refunded_before_minor|amt }} / x) = {{ d.cumulative_reversal_before_minor|amt }}
+this line          = -({{ d.cumulative_reversal_after_minor|amt }} - {{ d.cumulative_reversal_before_minor|amt }}) = {{ ln.amount_minor|money(ln.currency) }}</div>
+    <p class="small muted">The stored original earning is reversed — never recomputed at today's plan rate — and attainment is not reduced, so no other deal is re-tiered. <a href="{{ url_for('ui.line', p=d.original_period, line_key=d.original_line_key) }}">Open the original earning line →</a></p>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="link"><h3><span class="no">1</span>Manual adjustment #{{ d.adj_id }}</h3>
+    <dl class="kv"><dt>Category</dt><dd>{{ d.category }}</dd><dt>Reason</dt><dd>{{ d.reason }}</dd><dt>Entered by</dt><dd>{{ d.entered_by }} at {{ d.entered_at }}</dd>
+    {% if d.case_id %}<dt>Case</dt><dd><a href="{{ url_for('ui.case', case_id=d.case_id) }}">{{ d.case_id }}</a></dd>{% endif %}</dl>
+  </div>
+{% endif %}
+</div>
+{% endblock %}

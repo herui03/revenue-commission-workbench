@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest==9.1.1
+# Browser end-to-end run (scripts/e2e_browser.py). Needs a Chromium: `python -m playwright install chromium`.
+playwright==1.56.0

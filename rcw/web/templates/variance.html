@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "macros.html" import case_badge, csrf with context %}
+{% block title %}Variance{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Expected vs recorded payouts</h1>
+  <p class="muted">Variance = <b>recorded</b> (synthetic payout register) − <b>expected</b> (this workbench). Positive: the register shows more than expected (possible overpayment); negative: less (possible underpayment).</p></div></div>
+{% if not p %}
+<div class="card empty"><h2>No periods yet</h2><p>Load data first.</p></div>
+{% else %}
+<div class="card row" style="padding:12px">
+  <form method="get" class="row" style="margin:0">
+    <label for="per">Period</label>
+    <select id="per" name="period" data-autosubmit>{% for o in options %}<option {{ 'selected' if o == p }}>{{ o }}</option>{% endfor %}</select>
+    <label for="asof">View as of</label>
+    <select id="asof" name="as_of_run" data-autosubmit><option value="">Current ({{ 'CLOSED' if table.basis == 'CLOSED' and not as_of else 'live' }})</option>{% for r in runs %}<option value="{{ r.run_id }}" {{ 'selected' if as_of == r.run_id }}>run #{{ r.run_id }} · {{ r.created_at }}</option>{% endfor %}</select>
+    <noscript><button class="btn sm" type="submit">Show</button></noscript>
+  </form>
+  <span class="spacer"></span>
+  {% if not as_of %}
+  <form method="post" action="{{ url_for('ui.variance_refresh') }}" style="margin:0" title="Keeps case ids, owners and notes; reopens a resolved case whose amount changed.">{{ csrf() }}
+    <input type="hidden" name="period" value="{{ p }}">
+    <button class="btn primary" type="submit">Refresh cases for {{ p }}</button>
+  </form>
+  {% endif %}
+</div>
+{% if as_of %}<div class="callout warn small"><b>Historical view</b> — expected amounts from run #{{ as_of }} ({{ table.basis }}). Read-only: viewing history never changes current cases.</div>{% endif %}
+<div class="callout small">Expected basis: <b>{{ table.basis }}</b> — {{ 'frozen close snapshot' if table.basis == 'CLOSED' else 'draft calculation; it can still change before close' }}.</div>
+
+<section class="card">
+  {% if table.rows %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Rep</th><th>Ccy</th><th class="num">Expected</th><th class="num">Recorded</th><th class="num">Variance</th><th>Case</th><th>Owner</th><th>Reason code</th></tr></thead>
+    <tbody>
+    {% for r in table.rows %}
+      <tr>
+        <td>{{ names.get(r.rep_id, r.rep_id) }}<div class="small muted">{{ r.rep_id }}</div></td><td>{{ r.currency }}</td>
+        <td class="num">{{ r.expected_minor|amt if r.has_expected else '—' }}</td>
+        <td class="num">{{ r.recorded_minor|amt if r.has_recorded else '— none recorded' }}</td>
+        <td class="num"><b>{% if r.variance_minor %}<span title="Needs explanation">&#9888; {{ r.variance_minor|smoney(r.currency) }}</span>{% else %}0.00 &#10003;{% endif %}</b>
+          <div class="small muted">{{ 'register higher' if r.variance_minor > 0 else ('register lower' if r.variance_minor < 0 else 'matches') }}</div></td>
+        <td>{% if r.case %}<a href="{{ url_for('ui.case', case_id=r.case.case_id) }}">{{ r.case.case_id }}</a> {{ case_badge(r.case.status) }}{% if as_of and r.case %}<div class="small muted">case figures are current, not as-of</div>{% endif %}{% else %}<span class="small muted">{{ 'no case yet — refresh' if r.variance_minor else '—' }}</span>{% endif %}</td>
+        <td class="small">{{ r.case.owner if r.case and r.case.owner else '' }}</td>
+        <td class="small">{{ r.case.reason_code if r.case and r.case.reason_code else '' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% else %}<div class="empty small">No expected or recorded payouts for {{ p }}.</div>{% endif %}
+  <p class="small muted" style="margin-top:10px">A <b>resolved</b> case means the difference is explained. It does not mean money was corrected or paid — a correction is a separate adjustment in an open month, and payment happens outside this tool.</p>
+</section>
+{% if table.recorded_rows %}
+<details class="card"><summary>Payout register rows for {{ p }} ({{ table.recorded_rows|length }})</summary>
+  <div class="table-wrap"><table><thead><tr><th>Record</th><th>Rep</th><th>Ccy</th><th class="num">Amount</th><th>Source</th><th>Memo</th></tr></thead><tbody>
+  {% for r in table.recorded_rows %}<tr><td>{{ r.record_id }}</td><td>{{ names.get(r.rep_id, r.rep_id) }}</td><td>{{ r.currency }}</td><td class="num">{{ r.amount_minor|amt }}</td><td>{{ r.source_system }}</td><td class="explain">{{ r.memo }}</td></tr>{% endfor %}
+  </tbody></table></div>
+</details>
+{% endif %}
+{% endif %}
+{% endblock %}

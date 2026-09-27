@@ -1,0 +1,17 @@
+{
+  "_source": "GitHub Actions API (list_workflow_runs / list_workflow_jobs), read by Claude Code on 2026-09-26: the most recent completed run when this evidence was built. The final commit's own CI run is reported in the hand-off message.",
+  "html_url": "https://github.com/herui03/revenue-commission-workbench/actions/runs/36269055719",
+  "run_number": 2,
+  "head_sha": "8e8f7cc5db214a1e8dda7fca2613eff5807b7982",
+  "runner": "ubuntu-24.04",
+  "actions": "actions/checkout@v7, actions/setup-python@v7, actions/upload-artifact@v7 (node24)",
+  "conclusion": "success",
+  "jobs": [
+    {"name": "Core (stdlib only, Python 3.10)", "conclusion": "success"},
+    {"name": "Core (stdlib only, Python 3.11)", "conclusion": "success"},
+    {"name": "Core (stdlib only, Python 3.12)", "conclusion": "success"},
+    {"name": "Web UI + browser end-to-end", "conclusion": "success"}
+  ],
+  "previous_run": {"html_url": "https://github.com/herui03/revenue-commission-workbench/actions/runs/36268517727",
+                   "head_sha": "3668e35c39a04e233363c01b23940892ab6a108c", "conclusion": "success"}
+}

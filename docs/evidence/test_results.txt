@@ -1,0 +1,110 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/user/revenue-commission-workbench/.venv/bin/python
+rootdir: /home/user/revenue-commission-workbench
+collecting ... collected 88 items
+
+tests/test_exports.py::CsvSafetyTests::test_formula_prefixes_escaped_numbers_untouched PASSED [  1%]
+tests/test_exports.py::FrozenExportTests::test_closed_export_identical_after_later_changes PASSED [  2%]
+tests/test_exports.py::FrozenExportTests::test_statement_csv_structure_and_escaping PASSED [  3%]
+tests/test_hand_scenarios.py::HandScenarioTests::test_every_hand_scenario 
+tests/test_hand_scenarios.py::HandScenarioTests::test_every_hand_scenario PASSED [  4%]
+tests/test_import.py::ValidationCaseTests::test_hand_listed_cash_validation_cases 
+tests/test_import.py::ValidationCaseTests::test_hand_listed_cash_validation_cases PASSED [  5%]
+tests/test_import.py::ValidationCaseTests::test_hand_listed_refund_cases 
+tests/test_import.py::ValidationCaseTests::test_hand_listed_refund_cases PASSED [  6%]
+tests/test_import.py::ValidationCaseTests::test_over_refund_is_order_independent PASSED [  7%]
+tests/test_import.py::ValidationCaseTests::test_trailing_newline_ids_and_periods_rejected PASSED [  9%]
+tests/test_import.py::SameDayRefundTests::test_both_row_orders_commit_in_strict_and_quarantine_mode 
+tests/test_import.py::SameDayRefundTests::test_both_row_orders_commit_in_strict_and_quarantine_mode PASSED [ 10%]
+tests/test_import.py::CalendarRangeTests::test_dates_outside_supported_years_are_quarantined PASSED [ 11%]
+tests/test_import.py::CalendarRangeTests::test_payout_period_validation_quarantines_instead_of_crashing 
+tests/test_import.py::CalendarRangeTests::test_payout_period_validation_quarantines_instead_of_crashing PASSED [ 12%]
+tests/test_import.py::CalendarRangeTests::test_period_boundaries_cannot_leave_supported_range PASSED [ 13%]
+tests/test_import.py::CalendarRangeTests::test_workflow_endpoints_reject_invalid_periods_without_writes 
+tests/test_import.py::CalendarRangeTests::test_workflow_endpoints_reject_invalid_periods_without_writes PASSED [ 14%]
+tests/test_import.py::FileLevelTests::test_bom_and_blank_lines_and_column_order PASSED [ 15%]
+tests/test_import.py::FileLevelTests::test_duplicate_header_rejected PASSED [ 17%]
+tests/test_import.py::FileLevelTests::test_empty_and_non_utf8 PASSED     [ 18%]
+tests/test_import.py::FileLevelTests::test_field_count_mismatch PASSED   [ 19%]
+tests/test_import.py::FileLevelTests::test_missing_and_unknown_headers_rejected PASSED [ 20%]
+tests/test_import.py::IdempotencyTests::test_conflict_inside_one_file_quarantines_all_copies PASSED [ 21%]
+tests/test_import.py::IdempotencyTests::test_conflicting_existing_row_is_quarantined_not_overwritten PASSED [ 22%]
+tests/test_import.py::IdempotencyTests::test_control_totals_reconcile PASSED [ 23%]
+tests/test_import.py::IdempotencyTests::test_identical_duplicate_inside_file_counted_once PASSED [ 25%]
+tests/test_import.py::IdempotencyTests::test_quarantined_row_superseded_by_later_valid_row PASSED [ 26%]
+tests/test_import.py::IdempotencyTests::test_reordered_file_rows_are_duplicates PASSED [ 27%]
+tests/test_import.py::IdempotencyTests::test_same_bytes_other_filename_is_noop PASSED [ 28%]
+tests/test_import.py::IdempotencyTests::test_strict_mode_is_atomic PASSED [ 29%]
+tests/test_import.py::ReferenceDataTests::test_account_name_conflict PASSED [ 30%]
+tests/test_import.py::ReferenceDataTests::test_ambiguous_assignment_and_plan_rules PASSED [ 31%]
+tests/test_import.py::ReferenceDataTests::test_existing_split_is_immutable PASSED [ 32%]
+tests/test_import.py::ReferenceDataTests::test_ids_are_case_sensitive_by_rejection PASSED [ 34%]
+tests/test_import.py::ReferenceDataTests::test_reimport_of_identical_old_plan_after_close_is_duplicate_not_error PASSED [ 35%]
+tests/test_import.py::ReferenceDataTests::test_retroactive_plan_after_close PASSED [ 36%]
+tests/test_import.py::ReferenceDataTests::test_split_total_and_group_integrity PASSED [ 37%]
+tests/test_import.py::FuzzTests::test_random_garbage_never_crashes_and_always_reconciles 
+tests/test_import.py::FuzzTests::test_random_garbage_never_crashes_and_always_reconciles PASSED [ 38%]
+tests/test_money.py::ParseTests::test_format PASSED                      [ 39%]
+tests/test_money.py::ParseTests::test_percent 
+tests/test_money.py::ParseTests::test_percent PASSED                     [ 40%]
+tests/test_money.py::ParseTests::test_rejected_amounts 
+tests/test_money.py::ParseTests::test_rejected_amounts PASSED            [ 42%]
+tests/test_money.py::ParseTests::test_signed_amounts PASSED              [ 43%]
+tests/test_money.py::ParseTests::test_valid_amounts 
+tests/test_money.py::ParseTests::test_valid_amounts PASSED               [ 44%]
+tests/test_money.py::RoundingTests::test_half_up PASSED                  [ 45%]
+tests/test_money.py::RoundingTests::test_single_rounding_per_line PASSED [ 46%]
+tests/test_money.py::AllocationTests::test_bad_inputs PASSED             [ 47%]
+tests/test_money.py::AllocationTests::test_conservation_and_order_independence_random PASSED [ 48%]
+tests/test_money.py::AllocationTests::test_duplicate_keys_rejected PASSED [ 50%]
+tests/test_money.py::AllocationTests::test_hand_values PASSED            [ 51%]
+tests/test_money.py::CumulativeReversalTests::test_full_refund_always_exact_random_partitions PASSED [ 52%]
+tests/test_money.py::CumulativeReversalTests::test_reviewer_case_ten_cents_three_parts PASSED [ 53%]
+tests/test_money.py::NoFloatInMoneyPathTests::test_no_float_arithmetic_in_money_modules 
+tests/test_money.py::NoFloatInMoneyPathTests::test_no_float_arithmetic_in_money_modules PASSED [ 54%]
+tests/test_oracle_and_order.py::OracleCrossCheck::test_engine_matches_oracle_on_seeded_datasets 
+tests/test_oracle_and_order.py::OracleCrossCheck::test_engine_matches_oracle_on_seeded_datasets PASSED [ 55%]
+tests/test_oracle_and_order.py::OracleCrossCheck::test_frozen_path_equals_draft_path 
+tests/test_oracle_and_order.py::OracleCrossCheck::test_frozen_path_equals_draft_path PASSED [ 56%]
+tests/test_oracle_and_order.py::OrderIndependence::test_shuffled_rows_and_file_splits_give_identical_money PASSED [ 57%]
+tests/test_variance.py::DemoStoryTests::test_expected_payouts_match_hand_values PASSED [ 59%]
+tests/test_variance.py::DemoStoryTests::test_story_properties PASSED     [ 60%]
+tests/test_variance.py::DemoStoryTests::test_suggestions_find_the_planted_causes 
+tests/test_variance.py::DemoStoryTests::test_suggestions_find_the_planted_causes PASSED [ 61%]
+tests/test_variance.py::DemoStoryTests::test_variances_match_hand_values PASSED [ 62%]
+tests/test_variance.py::CaseLifecycleTests::test_bad_transitions_and_codes PASSED [ 63%]
+tests/test_variance.py::CaseLifecycleTests::test_excluded_collection_clears_existing_case PASSED [ 64%]
+tests/test_variance.py::CaseLifecycleTests::test_historical_as_of_views_are_read_only PASSED [ 65%]
+tests/test_variance.py::CaseLifecycleTests::test_ids_notes_preserved_and_reopen_on_change PASSED [ 67%]
+tests/test_web.py::WebTests::test_csrf_and_trusted_host PASSED           [ 68%]
+tests/test_web.py::WebTests::test_empty_state_and_security_headers PASSED [ 69%]
+tests/test_web.py::WebTests::test_every_post_form_carries_a_nonempty_csrf_token PASSED [ 70%]
+tests/test_web.py::WebTests::test_full_story_over_http PASSED            [ 71%]
+tests/test_web.py::WebTests::test_get_pages_are_read_only PASSED         [ 72%]
+tests/test_web.py::WebTests::test_reset_requires_confirmation PASSED     [ 73%]
+tests/test_web.py::WebTests::test_upload_duplicate_bad_file_and_escaping PASSED [ 75%]
+tests/test_workflow.py::TransitionTests::test_invalid_transitions PASSED [ 76%]
+tests/test_workflow.py::TransitionTests::test_period_not_ended_and_chronological_order PASSED [ 77%]
+tests/test_workflow.py::TransitionTests::test_return_to_draft_requires_reason PASSED [ 78%]
+tests/test_workflow.py::StaleReviewTests::test_adjustment_after_review_is_stale PASSED [ 79%]
+tests/test_workflow.py::StaleReviewTests::test_booking_only_import_after_review_is_stale PASSED [ 80%]
+tests/test_workflow.py::StaleReviewTests::test_new_cash_after_review_is_stale PASSED [ 81%]
+tests/test_workflow.py::StaleReviewTests::test_plan_version_after_review_is_stale PASSED [ 82%]
+tests/test_workflow.py::StaleReviewTests::test_quarantined_reference_row_does_not_make_review_stale PASSED [ 84%]
+tests/test_workflow.py::StaleReviewTests::test_recalc_with_identical_result_keeps_review PASSED [ 85%]
+tests/test_workflow.py::StaleReviewTests::test_snapshot_is_built_from_the_reviewed_run PASSED [ 86%]
+tests/test_workflow.py::StaleReviewTests::test_submit_requires_fresh_run PASSED [ 87%]
+tests/test_workflow.py::HoldTests::test_assignment_supersession_and_end_date PASSED [ 88%]
+tests/test_workflow.py::HoldTests::test_exclusion_decision PASSED        [ 89%]
+tests/test_workflow.py::HoldTests::test_missing_assignment_and_missing_plan_version PASSED [ 90%]
+tests/test_workflow.py::HoldTests::test_no_split_hold_blocks_close_and_clears_when_split_arrives PASSED [ 92%]
+tests/test_workflow.py::HoldTests::test_quarantined_cash_row_blocks_until_dismissed PASSED [ 93%]
+tests/test_workflow.py::LateDataTests::test_late_event_posts_only_into_first_open_period_and_is_final PASSED [ 94%]
+tests/test_workflow.py::LateDataTests::test_late_refund_claws_back_frozen_earning PASSED [ 95%]
+tests/test_workflow.py::LateDataTests::test_refund_of_excluded_collection_is_held PASSED [ 96%]
+tests/test_workflow.py::AdjustmentTests::test_manual_adjustments_are_separate_and_need_reason PASSED [ 97%]
+tests/test_workflow.py::ImmutabilityTests::test_every_mutation_is_audited PASSED [ 98%]
+tests/test_workflow.py::ImmutabilityTests::test_triggers_block_edits_and_audit_chain_detects_tampering 
+tests/test_workflow.py::ImmutabilityTests::test_triggers_block_edits_and_audit_chain_detects_tampering PASSED [100%]
+
+=================== 88 passed, 301 subtests passed in 7.14s ====================

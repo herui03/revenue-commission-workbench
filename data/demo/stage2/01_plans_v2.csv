@@ -1,0 +1,3 @@
+plan_id,version,currency,effective_from,threshold_amount,base_rate_pct,accelerator_rate_pct,description
+CASH-STD,2,SGD,2026-05-01,10000.00,5.00,9.00,Demo cash plan v2: accelerator raised to 9% from May
+CASH-STD,2,USD,2026-05-01,10000.00,5.00,9.00,Demo cash plan v2: accelerator raised to 9% from May

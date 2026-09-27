@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "macros.html" import case_badge, money_td, ltype, csrf with context %}
+{% block title %}Case {{ cs.case_id }}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{{ url_for('ui.variance_page', period=cs.period) }}">Variance {{ cs.period }}</a> › {{ cs.case_id }}</div>
+<div class="page-head">
+  <div><div class="row"><h1 style="margin:0">{{ cs.case_id }}</h1>{{ case_badge(cs.status) }}</div>
+    <div class="muted">{{ names.get(cs.rep_id, cs.rep_id) }} · {{ cs.currency }} · {{ cs.period|plabel }} · owner {{ cs.owner or 'unassigned' }}</div></div>
+</div>
+<div class="tiles" style="margin-bottom:16px">
+  <div class="tile"><div class="k">Expected ({{ cs.expected_basis }})</div><div class="v">{{ cs.expected_minor|money(cs.currency) }}</div></div>
+  <div class="tile"><div class="k">Recorded (register)</div><div class="v">{{ cs.recorded_minor|money(cs.currency) }}</div></div>
+  <div class="tile em"><div class="k">Variance (recorded − expected)</div><div class="v">{{ cs.variance_minor|smoney(cs.currency) }}</div><div class="h">{{ 'register higher than expected' if cs.variance_minor > 0 else ('register lower than expected' if cs.variance_minor < 0 else 'no difference') }}</div></div>
+  <div class="tile"><div class="k">Reason code</div><div class="v small">{{ cs.reason_code or '—' }}</div></div>
+</div>
+<div class="callout warn small"><b>Resolved ≠ corrected ≠ paid.</b> Resolving records the explanation. Correcting money is a separate, reasoned adjustment in an open month; paying happens outside this tool.</div>
+
+<div class="grid g2">
+  <section class="card"><h2>Suggested explanations</h2>
+    <p class="small muted">Deterministic matches of the variance against this rep's lines and register rows — hints for the analyst to confirm, never conclusions.</p>
+    {% if sugg %}<ul class="stack" style="padding-left:18px">
+      {% for s in sugg %}<li><span class="badge {{ 'closed' if s.match == 'exact' else 'info' }}">{{ s.match }}</span> <b>{{ s.code }}</b> — {{ s.message }}
+        {% if s.evidence %}<div class="small">Evidence: {% for e in s.evidence %}{% if ':' in e %}<a href="{{ url_for('ui.line', p=cs.period, line_key=e) }}"><code>{{ e }}</code></a>{% else %}<code>{{ e }}</code>{% endif %}{{ ', ' if not loop.last }}{% endfor %}</div>{% endif %}</li>{% endfor %}
+    </ul>{% else %}<p class="small">No automatic match.</p>{% endif %}
+  </section>
+  <section class="card"><h2>Update case</h2>
+    <form method="post" action="{{ url_for('ui.case_update', case_id=cs.case_id) }}" class="stack">{{ csrf() }}
+      <div class="form-grid">
+        <div class="field"><label for="owner">Owner (label)</label><input id="owner" type="text" name="owner" value="{{ cs.owner or '' }}"></div>
+        <div class="field"><label for="rc">Reason code</label><select id="rc" name="reason_code"><option value="">—</option>{% for k, v in reason_codes.items() %}<option value="{{ k }}" {{ 'selected' if k == cs.reason_code }} title="{{ v }}">{{ k }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="stt">Move to</label><select id="stt" name="status"><option value="">(keep {{ cs.status }})</option>{% for t in transitions %}<option>{{ t }}</option>{% endfor %}</select></div>
+      </div>
+      <div class="field"><label for="rn">Resolution note (required to resolve)</label><textarea id="rn" name="resolution_note">{{ cs.resolution_note or '' }}</textarea></div>
+      <div><button class="btn primary" type="submit">Save as {{ actor }}</button></div>
+    </form>
+  </section>
+</div>
+
+<div class="grid g2">
+  <section class="card"><h2>Expected lines ({{ basis }})</h2>
+    {% if lines %}<div class="table-wrap"><table><thead><tr><th>Line</th><th>Event</th><th class="num">Amount</th></tr></thead><tbody>
+      {% for ln in lines %}<tr><td>{{ ltype(ln.line_type, TYPE_LABELS) }} <a class="small" href="{{ url_for('ui.line', p=cs.period, line_key=ln.line_key) }}">evidence</a></td><td>{{ ln.event_id or ('adj #' ~ ln.detail.adj_id) }}</td>{{ money_td(ln.amount_minor) }}</tr>{% endfor %}
+    </tbody><tfoot><tr><td colspan="2">Expected</td>{{ money_td(lines|sum(attribute='amount_minor')) }}</tr></tfoot></table></div>
+    {% else %}<p class="small muted">No expected lines (nothing earned, or the source was excluded).</p>{% endif %}
+  </section>
+  <section class="card"><h2>Recorded register rows</h2>
+    {% if recs %}<div class="table-wrap"><table><thead><tr><th>Record</th><th>Source</th><th>Memo</th><th class="num">Amount</th></tr></thead><tbody>
+      {% for r in recs %}<tr><td>{{ r.record_id }}</td><td>{{ r.source_system }}</td><td class="explain">{{ r.memo }}</td>{{ money_td(r.amount_minor) }}</tr>{% endfor %}
+    </tbody><tfoot><tr><td colspan="3">Recorded</td>{{ money_td(recs|sum(attribute='amount_minor')) }}</tr></tfoot></table></div>
+    {% else %}<p class="small muted">Nothing recorded for this rep and currency.</p>{% endif %}
+  </section>
+</div>
+
+<div class="grid g2">
+  <section class="card"><h2>Notes &amp; history</h2>
+    <ol class="stack small" style="padding-left:18px">
+      {% for n in notes %}<li><b>{{ n.author }}</b> <span class="muted">{{ n.created_at }} · {{ 'system' if n.kind == 'SYSTEM' else 'note' }}</span><div>{{ n.body }}</div></li>{% endfor %}
+    </ol>
+    <form method="post" action="{{ url_for('ui.case_note', case_id=cs.case_id) }}" class="stack">{{ csrf() }}
+      <textarea name="body" aria-label="New note" placeholder="Add a note (append-only)"></textarea>
+      <div><button class="btn" type="submit">Add note as {{ actor }}</button></div>
+    </form>
+  </section>
+  <section class="card"><h2>Post a correction (optional)</h2>
+    <p class="small muted">Creates a linked manual adjustment in an open month. It changes <i>expected</i> commission for that month; it does not pay anyone.</p>
+    {% if adjustments %}<ul class="small">{% for a in adjustments %}<li>#{{ a.adj_id }} {{ a.period }} {{ a.amount_minor|money(a.currency) }} — {{ a.reason }}</li>{% endfor %}</ul>{% endif %}
+    {% if open_periods %}
+    <form method="post" action="{{ url_for('ui.add_adjustment', p=open_periods[0]) }}" class="stack">{{ csrf() }}
+      <input type="hidden" name="rep_id" value="{{ cs.rep_id }}"><input type="hidden" name="currency" value="{{ cs.currency }}"><input type="hidden" name="case_id" value="{{ cs.case_id }}">
+      <div class="form-grid">
+        <div class="field"><label>Posting month</label><input type="text" value="{{ open_periods[0] }}" disabled></div>
+        <div class="field"><label for="ca">Amount ({{ cs.currency }}, e.g. -80.00)</label><input id="ca" type="text" name="amount"></div>
+        <div class="field"><label for="cc">Category</label><select id="cc" name="category"><option value="PAYOUT_CORRECTION">Payout correction</option><option value="COMMISSION_ADJUSTMENT">Commission adjustment</option></select></div>
+      </div>
+      <div class="field"><label for="cr">Reason (required)</label><input id="cr" type="text" name="reason"></div>
+      <div><button class="btn" type="submit">Post adjustment in {{ open_periods[0] }}</button></div>
+    </form>
+    {% else %}<p class="small">No open month available.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+name: ci
+on:
+  push:
+  pull_request:
+# Least privilege: read-only token, no secrets, no deployment.
+# Actions pinned to their current major releases (verified 2026-09-26: checkout v7.0.1,
+# setup-python v7.0.0, upload-artifact v7.0.1 — all declare `runs.using: node24`).
+# Runner image pinned to ubuntu-24.04 for reproducibility instead of the moving ubuntu-latest.
+permissions:
+  contents: read
+
+jobs:
+  core-stdlib:
+    name: Core (stdlib only, Python ${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit, scenario, workflow and oracle tests (no third-party packages)
+        run: python -m unittest discover -s tests -t . -v
+      - name: Scripted demo story from a clean checkout
+        run: python -m rcw --db "$RUNNER_TEMP/demo.db" demo --out "$RUNNER_TEMP/demo_out"
+      - name: Benchmark smoke run (2,000 events, controls must pass)
+        run: python scripts/benchmark.py --events 2000 --out "$RUNNER_TEMP/bench"
+
+  web:
+    name: Web UI + browser end-to-end
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Full pytest suite (includes Flask tests)
+        run: python -m pytest -q
+      - name: Install Chromium for Playwright
+        run: python -m playwright install --with-deps chromium
+      - name: Browser E2E (screenshots + layout checks)
+        run: python scripts/e2e_browser.py
+      - name: Keep screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-evidence
+          path: |
+            docs/evidence/screenshots/
+            docs/evidence/e2e_results.json

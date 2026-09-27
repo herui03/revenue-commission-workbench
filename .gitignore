@@ -1,0 +1,15 @@
+# local runtime state — never commit
+.venv/
+venv/
+__pycache__/
+*.pyc
+instance/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+out/
+.pytest_cache/
+*.zip
+.env
+.env.*

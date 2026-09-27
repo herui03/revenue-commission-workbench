@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_badge, money_td, ltype %}
+{% block title %}Statement {{ rep }} {{ p }}{% endblock %}
+{% block content %}
+{% set name = model.names.get(rep, rep) %}
+<div class="crumbs"><a href="{{ url_for('ui.index') }}">Overview</a> › <a href="{{ url_for('ui.period', p=p) }}">{{ p }}</a> › Statement</div>
+<div class="page-head">
+  <div><div class="row"><h1 style="margin:0">{{ name }} · {{ ccy }}</h1>{{ status_badge('CLOSED' if model.status == 'CLOSED' else ('IN_REVIEW' if model.status == 'IN_REVIEW' else 'OPEN')) }}</div>
+    <div class="muted">Commission statement for {{ p|plabel }} · rep id {{ rep }}</div></div>
+  <div class="row">
+    <a class="btn" href="{{ url_for('ui.export', p=p, name='statement.csv', rep=rep, ccy=ccy) }}">CSV</a>
+    <a class="btn" href="{{ url_for('ui.export', p=p, name='statement.html', rep=rep, ccy=ccy) }}" target="_blank" rel="noopener">Printable HTML</a>
+  </div>
+</div>
+{% if model.status == 'CLOSED' %}
+<div class="callout ok small">Frozen snapshot <code>{{ model.meta.snapshot_sha256 }}</code> (integrity {{ '✓ verified' if model.meta.integrity_verified else '✗ FAILED' }}). This page is rendered from the snapshot, not from current data.</div>
+{% else %}
+<div class="callout warn small">Draft — these numbers can change until {{ p }} is closed.</div>
+{% endif %}
+
+{% if t %}
+<section class="card">
+  <div class="tiles">
+    <div class="tile"><div class="k">Credited collections</div><div class="v">{{ t.credited_minor|money(ccy) }}</div><div class="h">gross positive cash this month</div></div>
+    <div class="tile"><div class="k">Commission earned</div><div class="v">{{ t.earnings_minor|money(ccy) }}</div><div class="h">base {{ t.base_portion_minor|amt }} · accelerated {{ t.accel_portion_minor|amt }} of cash</div></div>
+    <div class="tile"><div class="k">Refund clawbacks</div><div class="v {{ 'neg' if t.clawbacks_minor < 0 }}">{{ t.clawbacks_minor|money(ccy) }}</div></div>
+    <div class="tile"><div class="k">Late (prior-period)</div><div class="v">{{ t.late_minor|money(ccy) }}</div></div>
+    <div class="tile"><div class="k">Manual adjustments</div><div class="v">{{ t.manual_minor|money(ccy) }}</div></div>
+    <div class="tile em"><div class="k">Expected payout</div><div class="v">{{ t.net_minor|money(ccy) }}</div><div class="h">{{ 'payable recorded at close — not paid by this tool' if model.status == 'CLOSED' else 'draft' }}</div></div>
+  </div>
+  {% if chart %}<div class="chart-box" style="margin-top:14px">{{ chart|safe }}</div>{% endif %}
+</section>
+{% endif %}
+
+{% for htype in ['EARNING', 'CLAWBACK', 'LATE_EARNING', 'LATE_CLAWBACK', 'MANUAL_ADJUSTMENT'] %}
+{% if groups.get(htype) %}
+<section class="card">
+  <h2>{{ TYPE_LABELS[htype] }}{% if htype == 'MANUAL_ADJUSTMENT' %} <span class="small muted">(entered by people, not derived from cash)</span>{% endif %}</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Line</th><th>Date</th><th>Event</th><th class="num">Split</th><th class="num">{{ 'Credit reversed' if 'CLAWBACK' in htype else 'Credited' }}</th><th>How it was calculated</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+    {% for ln in groups[htype] %}
+      <tr>
+        <td>{{ ltype(ln.line_type, TYPE_LABELS) }}<div><a class="small" href="{{ url_for('ui.line', p=p, line_key=ln.line_key) }}">evidence →</a></div></td>
+        <td class="small">{{ ln.event_date or '' }}</td>
+        <td class="nowrap">{% if ln.event_id %}<a href="{{ url_for('ui.event', event_id=ln.event_id) }}">{{ ln.event_id }}</a>{% endif %}{% if ln.contract_id %}<div class="small muted">{{ ln.contract_id }}</div>{% endif %}</td>
+        <td class="num">{{ ln.split_bps|bps if ln.split_bps is not none else '' }}</td>
+        <td class="num">{{ (ln.credit_reversed_minor if 'CLAWBACK' in htype else ln.credited_minor)|amt if ln.event_id else '' }}</td>
+        <td class="explain">{{ explain(ln) }}</td>
+        {{ money_td(ln.amount_minor) }}
+      </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot><tr><td colspan="6">Subtotal</td>{{ money_td(groups[htype]|sum(attribute='amount_minor')) }}</tr></tfoot>
+  </table></div>
+</section>
+{% endif %}
+{% endfor %}
+
+{% if holds %}
+<section class="card"><h2>Holds affecting this statement</h2>
+  <ul class="small">{% for h in holds %}<li><b>{{ h.code }}</b> — {{ h.message }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% endblock %}

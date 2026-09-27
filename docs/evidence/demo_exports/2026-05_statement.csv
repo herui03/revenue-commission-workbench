@@ -1,0 +1,21 @@
+period,status,rep_id,rep_name,currency,line_type,line_key,event_id,original_event_id,event_date,contract_id,original_period,plan_id,plan_version,split_pct,credited,credit_reversed,below_threshold_portion,above_threshold_portion,base_rate,accelerator_rate,exact_minor_units,amount,explanation
+2026-05,CLOSED,REP-AURORA,Aurora (demo rep),SGD,EARNING,EARNING:E-2026-0501:REP-AURORA,E-2026-0501,,2026-05-08,C-1001,2026-05,CASH-STD,2,100.00,11000.00,0.00,10000.00,1000.00,5.00,9.00,59000,590.00,"Credited SGD 11,000.00 (100.00% split of SGD 11,000.00); attainment SGD 0.00 -> SGD 11,000.00 vs threshold SGD 10,000.00: SGD 10,000.00 up to threshold @ 5.00% + SGD 1,000.00 above threshold @ 9.00% = exact 59000 minor units -> SGD 590.00 (half-up once; plan CASH-STD v2)."
+2026-05,CLOSED,REP-CEDAR,Cedar (demo rep),USD,EARNING,EARNING:E-2026-0503:REP-CEDAR,E-2026-0503,,2026-05-15,C-1003,2026-05,CASH-STD,2,60.00,1800.00,0.00,1800.00,0.00,5.00,9.00,9000,90.00,"Credited USD 1,800.00 (60.00% split of USD 3,000.00); attainment USD 0.00 -> USD 1,800.00 vs threshold USD 10,000.00: USD 1,800.00 up to threshold @ 5.00% = exact 9000 minor units -> USD 90.00 (half-up once; plan CASH-STD v2)."
+2026-05,CLOSED,REP-DELTA,Delta (demo rep),USD,EARNING,EARNING:E-2026-0503:REP-DELTA,E-2026-0503,,2026-05-15,C-1003,2026-05,CASH-STD,2,40.00,1200.00,0.00,1200.00,0.00,5.00,9.00,6000,60.00,"Credited USD 1,200.00 (40.00% split of USD 3,000.00); attainment USD 0.00 -> USD 1,200.00 vs threshold USD 10,000.00: USD 1,200.00 up to threshold @ 5.00% = exact 6000 minor units -> USD 60.00 (half-up once; plan CASH-STD v2)."
+2026-05,CLOSED,REP-AURORA,Aurora (demo rep),SGD,CLAWBACK,CLAWBACK:E-2026-0502:REP-AURORA,E-2026-0502,E-2026-0404,2026-05-12,C-1002,2026-05,CASH-STD,1,100.00,0.00,1000.00,0.00,0.00,5.00,8.00,'-8000,-80.00,"Refund SGD 1,000.00 of collection E-2026-0404 (SGD 2,000.00); refunded SGD 0.00 -> SGD 1,000.00. Original earning SGD 160.00 (line EARNING:E-2026-0404:REP-AURORA, 2026-04, plan CASH-STD v1) reversed cumulatively: SGD 80.00 - SGD 0.00 = SGD 80.00. Credit reversed SGD 1,000.00. Tier capacity is not restored."
+2026-05,CLOSED,REP-CEDAR,Cedar (demo rep),USD,LATE_EARNING,LATE_EARNING:E-2026-0431:REP-CEDAR,E-2026-0431,,2026-04-29,C-1005,2026-04,CASH-STD,1,100.00,1500.00,0.00,0.00,1500.00,5.00,8.00,12000,120.00,"Late cash dated 2026-04-29 for closed 2026-04, posted in 2026-05; tiered after 2026-04's frozen ladder. Credited USD 1,500.00 (100.00% split of USD 1,500.00); attainment USD 12,407.40 -> USD 13,907.40 vs threshold USD 10,000.00: USD 1,500.00 above threshold @ 8.00% = exact 12000 minor units -> USD 120.00 (half-up once; plan CASH-STD v1)."
+
+period,status,rep_id,rep_name,currency,credited_collections,commission_earned,clawbacks,late_adjustments,manual_adjustments,expected_payout
+2026-05,CLOSED,REP-AURORA,Aurora (demo rep),SGD,11000.00,590.00,-80.00,0.00,0.00,510.00
+2026-05,CLOSED,REP-CEDAR,Cedar (demo rep),USD,1800.00,90.00,0.00,120.00,0.00,210.00
+2026-05,CLOSED,REP-DELTA,Delta (demo rep),USD,1200.00,60.00,0.00,0.00,0.00,60.00
+
+meta,closed_at,2026-09-26T20:17:10Z
+meta,engine_version,rcw-engine/1.0
+meta,integrity_verified,true
+meta,prepared_by,analyst-1
+meta,result_digest,8d8df611879c9fe74fdf0a9478fa71f1edc872d0cdb27fde344679366291d65c
+meta,reviewed_by,manager-1
+meta,run_id,3
+meta,snapshot_sha256,67bf96d9574d6c3853abb1ded57ca81b6b3161a1bd277bcf691943be5cfd28d9
+meta,disclaimer,"Synthetic demo. Commission is an invented cash-based policy, not revenue recognition. No payment executed."

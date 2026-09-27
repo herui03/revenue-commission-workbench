@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_badge, csrf with context %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Revenue &amp; Commission Operations Workbench</h1>
+    <p class="muted" style="max-width:760px">What cash came in, how much is commission-eligible, what each rep is owed and
+    why the number changed — with a period close that stops history being rewritten. Booked, invoiced, collected and
+    commission amounts are different metrics and are labelled separately everywhere.</p>
+  </div>
+</div>
+
+{% if counts.batches == 0 %}
+<div class="card empty">
+  <h2>No data yet</h2>
+  <p>Load the bundled synthetic demo (4 fictional reps, 6 invented customer contracts, SGD and USD) and follow the
+  guided steps below. Nothing leaves this computer.</p>
+  <form method="post" action="{{ url_for('ui.demo_action', action='load-stage1') }}">{{ csrf() }}
+    <button class="btn primary" type="submit">Load demo data (stage 1)</button>
+  </form>
+  <p class="small">Or <a href="{{ url_for('ui.imports') }}">import your own CSV files</a> — the column formats are listed there.</p>
+</div>
+{% endif %}
+
+<div class="grid g2">
+  <section class="card" aria-labelledby="guide-h">
+    <h2 id="guide-h">Guided demo — about 3 minutes</h2>
+    <ol class="checklist">
+      {% for s in steps %}
+      <li class="{{ s.state }}">
+        <span class="ic">{{ '&#10003;'|safe if s.done else loop.index }}</span>
+        <div>
+          <div class="ttl">{% if s.link and s.state != 'todo' %}<a href="{{ s.link }}">{{ s.title }}</a>{% else %}{{ s.title }}{% endif %}</div>
+          <div class="small muted">{{ s.detail }}</div>
+          {% if loop.index == 3 and s.state == 'next' %}
+          <form method="post" action="{{ url_for('ui.demo_action', action='load-stage2') }}" style="margin-top:6px">{{ csrf() }}
+            <button class="btn primary sm" type="submit">Load late-arriving data (stage 2)</button>
+          </form>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="card" aria-labelledby="state-h">
+    <h2 id="state-h">Workbench state</h2>
+    <div class="tiles">
+      <div class="tile"><div class="k">Cash events loaded</div><div class="v">{{ counts.events }}</div></div>
+      <div class="tile"><div class="k">Import batches</div><div class="v"><a href="{{ url_for('ui.imports') }}">{{ counts.batches }}</a></div></div>
+      <div class="tile"><div class="k">Open quarantined rows</div><div class="v"><a href="{{ url_for('ui.quarantine') }}">{{ counts.quarantine }}</a></div></div>
+      <div class="tile"><div class="k">Open variance cases</div><div class="v"><a href="{{ url_for('ui.variance_page') }}">{{ counts.cases }}</a></div></div>
+    </div>
+    <div class="callout small">Switch the <b>Acting as</b> label in the header to play preparer (analyst-1) and reviewer
+    (manager-1). The workbench refuses to let the same label prepare and close a month. Labels are not a login.</div>
+    <details>
+      <summary class="small">Demo database controls</summary>
+      <div class="stack small">
+        <form method="post" action="{{ url_for('ui.demo_action', action='full') }}" data-confirm="Replace the local demo database with the fully played story?">{{ csrf() }}
+          <label><input type="checkbox" name="confirm" value="yes"> I understand this replaces the local demo database</label>
+          <button class="btn sm" type="submit">Play the full story instantly</button>
+        </form>
+        <form method="post" action="{{ url_for('ui.demo_action', action='reset') }}" data-confirm="Delete all local demo data?">{{ csrf() }}
+          <label><input type="checkbox" name="confirm" value="yes"> I understand this deletes all local demo data</label>
+          <button class="btn danger sm" type="submit">Reset demo to empty</button>
+        </form>
+      </div>
+    </details>
+  </section>
+</div>
+
+<section id="periods" aria-labelledby="periods-h">
+  <div class="page-head" style="margin-top:6px"><h2 id="periods-h" style="margin:0">Step 1 · Choose a period</h2>
+    <span class="small muted">Calendar months with cash activity. Closed months are frozen.</span></div>
+  {% if periods %}
+  <div class="pcards">
+    {% for pr in periods %}
+    <a class="pcard" href="{{ url_for('ui.period', p=pr.period) }}">
+      <div class="row"><span class="m">{{ pr.period|plabel }}</span><span class="spacer"></span>{{ status_badge(pr.status) }}</div>
+      <dl>
+        {% for ccy, k in pr.kpis.items() %}
+        <dt>Cash collected {{ ccy }}</dt><dd>{{ k.cash_collected_minor|amt }}</dd>
+        <dt>Expected payouts {{ ccy }}</dt><dd>{{ k.net_payable_minor|amt }}</dd>
+        {% endfor %}
+        <dt>Blocking holds</dt><dd>{% if pr.holds %}<span class="badge bad">&#9888; {{ pr.holds }}</span>{% else %}0{% endif %}</dd>
+      </dl>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card empty small">No periods yet — load data first.</div>
+  {% endif %}
+</section>
+{% endblock %}

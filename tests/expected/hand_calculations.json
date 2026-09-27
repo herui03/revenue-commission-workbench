@@ -1,0 +1,324 @@
+{
+  "_readme": "Hand-typed expected answers. See HAND_CALCULATIONS.md for the arithmetic. Production code never reads this file. Amounts are integer minor units (cents).",
+  "fixtures": {
+    "standard": {
+      "reps": "rep_id,display_name,team\nREP-A,Rep A (test),T1\nREP-B,Rep B (test),T1\nREP-C,Rep C (test),T2\n",
+      "plans": "plan_id,version,currency,effective_from,threshold_amount,base_rate_pct,accelerator_rate_pct,description\nCASH-STD,1,SGD,2026-01-01,10000.00,5.00,8.00,v1 test\nCASH-STD,1,USD,2026-01-01,10000.00,5.00,8.00,v1 test\n",
+      "assignments": "assignment_id,rep_id,plan_id,effective_from,effective_to\nAS-A,REP-A,CASH-STD,2026-01-01,\nAS-B,REP-B,CASH-STD,2026-01-01,\nAS-C,REP-C,CASH-STD,2026-01-01,\n",
+      "contracts": "contract_id,account_id,account_name,currency,booking_date,booked_amount,product\nK-SGD-A,ACC-1,Account One (test),SGD,2026-01-15,500000.00,Test\nK-SGD-B,ACC-2,Account Two (test),SGD,2026-01-15,500000.00,Test\nK-USD-A,ACC-3,Account Three (test),USD,2026-01-15,500000.00,Test\nK-6040,ACC-4,Account Four (test),SGD,2026-01-15,500000.00,Test\nK-5050,ACC-5,Account Five (test),SGD,2026-01-15,500000.00,Test\nK-USD-6040,ACC-6,Account Six (test),USD,2026-01-15,500000.00,Test\n",
+      "splits": "contract_id,rep_id,split_pct\nK-SGD-A,REP-A,100\nK-SGD-B,REP-B,100\nK-USD-A,REP-A,100\nK-6040,REP-A,60\nK-6040,REP-B,40\nK-5050,REP-A,50\nK-5050,REP-B,50\nK-USD-6040,REP-A,60.00\nK-USD-6040,REP-B,40.00\n"
+    },
+    "plan_v2": "plan_id,version,currency,effective_from,threshold_amount,base_rate_pct,accelerator_rate_pct,description\nCASH-STD,2,SGD,2026-05-01,10000.00,5.00,9.00,v2 test\nCASH-STD,2,USD,2026-05-01,10000.00,5.00,9.00,v2 test\n",
+    "cash_header": "event_id,event_type,contract_id,event_date,currency,amount,original_event_id,invoice_ref,memo\n"
+  },
+  "scenarios": [
+    {
+      "id": "HC-01",
+      "title": "Threshold crossing: 10,000 at 5% then 2,000 at 8%",
+      "requirements": ["CAL-03"],
+      "business_date": "2026-07-15",
+      "cash": ["E1,COLLECTION,K-SGD-A,2026-04-06,SGD,10000.00,,,", "E2,COLLECTION,K-SGD-A,2026-04-20,SGD,2000.00,,,"],
+      "steps": [{"action": "calculate", "period": "2026-04"}],
+      "expect_lines": {
+        "2026-04": [
+          {"type": "EARNING", "event": "E1", "rep": "REP-A", "credited": 1000000, "base_portion": 1000000, "accel_portion": 0, "amount": 50000},
+          {"type": "EARNING", "event": "E2", "rep": "REP-A", "credited": 200000, "base_portion": 0, "accel_portion": 200000, "accel_bps": 800, "amount": 16000}
+        ]
+      },
+      "expect_totals": {"2026-04": {"REP-A": {"SGD": 66000}}}
+    },
+    {
+      "id": "HC-02",
+      "title": "Refund after later plan change reverses ORIGINAL 8% earning (-80), new cash uses v2 9%",
+      "requirements": ["CAL-04", "PER-03"],
+      "business_date": "2026-07-15",
+      "cash": ["E1,COLLECTION,K-SGD-A,2026-04-06,SGD,10000.00,,,", "E2,COLLECTION,K-SGD-A,2026-04-20,SGD,2000.00,,,"],
+      "steps": [
+        {"action": "calculate", "period": "2026-04"},
+        {"action": "close", "period": "2026-04"},
+        {"action": "snapshot_export", "period": "2026-04", "tag": "april_before"},
+        {"action": "import", "kind": "plans", "fixture": "plan_v2"},
+        {"action": "import_cash", "rows": ["E3,COLLECTION,K-SGD-A,2026-05-08,SGD,11000.00,,,", "R1,REFUND,K-SGD-A,2026-05-12,SGD,1000.00,E2,,partial refund"]},
+        {"action": "calculate", "period": "2026-05"},
+        {"action": "assert_export_unchanged", "period": "2026-04", "tag": "april_before"}
+      ],
+      "expect_lines": {
+        "2026-05": [
+          {"type": "EARNING", "event": "E3", "rep": "REP-A", "credited": 1100000, "base_portion": 1000000, "accel_portion": 100000, "accel_bps": 900, "plan_version": 2, "amount": 59000},
+          {"type": "CLAWBACK", "event": "R1", "rep": "REP-A", "original_event": "E2", "credit_reversed": 100000, "amount": -8000}
+        ]
+      },
+      "expect_totals": {"2026-04": {"REP-A": {"SGD": 66000}}, "2026-05": {"REP-A": {"SGD": 51000}}}
+    },
+    {
+      "id": "HC-04",
+      "title": "Threshold crossed inside a single collection",
+      "requirements": ["CAL-03"],
+      "business_date": "2026-07-15",
+      "cash": ["E1,COLLECTION,K-SGD-A,2026-04-03,SGD,9000.00,,,", "E2,COLLECTION,K-SGD-A,2026-04-09,SGD,3000.00,,,"],
+      "steps": [{"action": "calculate", "period": "2026-04"}],
+      "expect_lines": {
+        "2026-04": [
+          {"type": "EARNING", "event": "E1", "rep": "REP-A", "credited": 900000, "base_portion": 900000, "accel_portion": 0, "amount": 45000},
+          {"type": "EARNING", "event": "E2", "rep": "REP-A", "credited": 300000, "base_portion": 100000, "accel_portion": 200000, "amount": 21000}
+        ]
+      },
+      "expect_totals": {"2026-04": {"REP-A": {"SGD": 66000}}}
+    },
+    {
+      "id": "HC-05",
+      "title": "60/40 split of 12,345.67 USD conserves every cent (residual to largest remainder)",
+      "requirements": ["CAL-02"],
+      "business_date": "2026-07-15",
+      "cash": ["E1,COLLECTION,K-USD-6040,2026-04-14,USD,12345.67,,,"],
+      "steps": [{"action": "calculate", "period": "2026-04"}],
+      "expect_lines": {
+        "2026-04": [
+          {"type": "EARNING", "event": "E1", "rep": "REP-A", "credited": 740740, "split_bps": 6000, "amount": 37037},
+          {"type": "EARNING", "event": "E1", "rep": "REP-B", "credited": 493827, "split_bps": 4000, "amount": 24691}
+        ]
+      },
+      "expect_totals": {"2026-04": {"REP-A": {"USD": 37037}, "REP-B": {"USD": 24691}}}
+    },
+    {
+      "id": "HC-06",
+      "title": "100.01 split 60/40 -> 6001 / 4000",
+      "requirements": ["CAL-02"],
+      "business_date": "2026-07-15",
+      "cash": ["E1,COLLECTION,K-6040,2026-04-14,SGD,100.01,,,"],
+      "steps": [{"action": "calculate", "period": "2026-04"}],
+      "expect_lines": {
+        "2026-04": [
+          {"type": "EARNING", "event": "E1", "rep": "REP-A", "credited": 6001, "amount": 300},
+          {"type": "EARNING", "event": "E1", "rep": "REP-B", "credited": 4000, "amount": 200}
+        ]
+      }
+    },
+    {
+      "id": "HC-07",
+      "title": "0.01 split 50/50 -> deterministic tie by rep id",
+      "requirements": ["CAL-02"],
+      "business_date": "2026-07-15",
+      "cash": ["E1,COLLECTION,K-5050,2026-04-14,SGD,0.01,,,"],
+      "steps": [{"action": "calculate", "period": "2026-04"}],
+      "expect_lines": {
+        "2026-04": [
+          {"type": "EARNING", "event": "E1", "rep": "REP-A", "credited": 1, "amount": 0},
+          {"type": "EARNING", "event": "E1", "rep": "REP-B", "credited": 0, "amount": 0}
+        ]
+      }
+    },
+    {
+      "id": "HC-08",
+      "title": "10-cent commission refunded in three parts reverses exactly 10 cents",
+      "requirements": ["CAL-05"],
+      "business_date": "2026-07-15",
+      "cash": [
+        "E1,COLLECTION,K-SGD-A,2026-04-01,SGD,2.00,,,",
+        "R1,REFUND,K-SGD-A,2026-04-02,SGD,0.67,E1,,",
+        "R2,REFUND,K-SGD-A,2026-04-03,SGD,0.67,E1,,",
+        "R3,REFUND,K-SGD-A,2026-04-04,SGD,0.66,E1,,"
+      ],
+      "steps": [{"action": "calculate", "period": "2026-04"}],
+      "expect_lines": {
+        "2026-04": [
+          {"type": "EARNING", "event": "E1", "rep": "REP-A", "credited": 200, "amount": 10},
+          {"type": "CLAWBACK", "event": "R1", "rep": "REP-A", "credit_reversed": 67, "amount": -3},
+          {"type": "CLAWBACK", "event": "R2", "rep": "REP-A", "credit_reversed": 67, "amount": -4},
+          {"type": "CLAWBACK", "event": "R3", "rep": "REP-A", "credit_reversed": 66, "amount": -3}
+        ]
+      },
+      "expect_totals": {"2026-04": {"REP-A": {"SGD": 0}}}
+    },
+    {
+      "id": "HC-09",
+      "title": "Cumulative reversal on 1,667 cents over three equal refunds",
+      "requirements": ["CAL-05"],
+      "business_date": "2026-07-15",
+      "cash": [
+        "E1,COLLECTION,K-SGD-A,2026-04-01,SGD,333.33,,,",
+        "R1,REFUND,K-SGD-A,2026-04-05,SGD,111.11,E1,,",
+        "R2,REFUND,K-SGD-A,2026-04-06,SGD,111.11,E1,,",
+        "R3,REFUND,K-SGD-A,2026-04-07,SGD,111.11,E1,,"
+      ],
+      "steps": [{"action": "calculate", "period": "2026-04"}],
+      "expect_lines": {
+        "2026-04": [
+          {"type": "EARNING", "event": "E1", "rep": "REP-A", "credited": 33333, "amount": 1667},
+          {"type": "CLAWBACK", "event": "R1", "rep": "REP-A", "amount": -556},
+          {"type": "CLAWBACK", "event": "R2", "rep": "REP-A", "amount": -555},
+          {"type": "CLAWBACK", "event": "R3", "rep": "REP-A", "amount": -556}
+        ]
+      },
+      "expect_totals": {"2026-04": {"REP-A": {"SGD": 0}}}
+    },
+    {
+      "id": "HC-10",
+      "title": "Refund does not restore tier capacity",
+      "requirements": ["CAL-06"],
+      "business_date": "2026-07-15",
+      "cash": [
+        "E1,COLLECTION,K-SGD-A,2026-04-02,SGD,10000.00,,,",
+        "R1,REFUND,K-SGD-A,2026-04-10,SGD,5000.00,E1,,",
+        "E2,COLLECTION,K-SGD-A,2026-04-15,SGD,2000.00,,,"
+      ],
+      "steps": [{"action": "calculate", "period": "2026-04"}],
+      "expect_lines": {
+        "2026-04": [
+          {"type": "EARNING", "event": "E1", "rep": "REP-A", "amount": 50000},
+          {"type": "CLAWBACK", "event": "R1", "rep": "REP-A", "amount": -25000},
+          {"type": "EARNING", "event": "E2", "rep": "REP-A", "base_portion": 0, "accel_portion": 200000, "amount": 16000}
+        ]
+      },
+      "expect_totals": {"2026-04": {"REP-A": {"SGD": 41000}}}
+    },
+    {
+      "id": "HC-11",
+      "title": "Plan boundary: 04-30 uses v1 8%, 05-01 uses v2 9% and attainment restarts",
+      "requirements": ["CAL-03"],
+      "business_date": "2026-07-15",
+      "extra_imports": [{"kind": "plans", "fixture": "plan_v2"}],
+      "cash": ["E1,COLLECTION,K-SGD-A,2026-04-30,SGD,11000.00,,,", "E2,COLLECTION,K-SGD-A,2026-05-01,SGD,11000.00,,,"],
+      "steps": [{"action": "calculate", "period": "2026-04"}, {"action": "calculate", "period": "2026-05"}],
+      "expect_lines": {
+        "2026-04": [{"type": "EARNING", "event": "E1", "rep": "REP-A", "plan_version": 1, "accel_bps": 800, "accel_portion": 100000, "amount": 58000}],
+        "2026-05": [{"type": "EARNING", "event": "E2", "rep": "REP-A", "plan_version": 2, "accel_bps": 900, "accel_portion": 100000, "amount": 59000}]
+      }
+    },
+    {
+      "id": "HC-12",
+      "title": "Separate ladders per currency (no FX, no combined attainment)",
+      "requirements": ["CAL-03"],
+      "business_date": "2026-07-15",
+      "cash": ["E1,COLLECTION,K-SGD-A,2026-04-10,SGD,6000.00,,,", "E2,COLLECTION,K-USD-A,2026-04-11,USD,6000.00,,,"],
+      "steps": [{"action": "calculate", "period": "2026-04"}],
+      "expect_totals": {"2026-04": {"REP-A": {"SGD": 30000, "USD": 30000}}}
+    },
+    {
+      "id": "HC-13",
+      "title": "Late collection after close: hold, then posted in May at April's ladder and rate",
+      "requirements": ["PER-06", "PER-03", "PER-05"],
+      "business_date": "2026-07-15",
+      "cash": ["E1,COLLECTION,K-USD-A,2026-04-10,USD,12407.40,,,"],
+      "steps": [
+        {"action": "calculate", "period": "2026-04"},
+        {"action": "close", "period": "2026-04"},
+        {"action": "snapshot_export", "period": "2026-04", "tag": "april_before"},
+        {"action": "import", "kind": "plans", "fixture": "plan_v2"},
+        {"action": "import_cash", "rows": ["L1,COLLECTION,K-USD-A,2026-04-29,USD,1500.00,,,bank posted late"]},
+        {"action": "calculate", "period": "2026-05"},
+        {"action": "expect_hold", "period": "2026-05", "code": "LATE_EVENT_PENDING", "event": "L1"},
+        {"action": "expect_close_error", "period": "2026-05", "code": "BLOCKING_HOLDS"},
+        {"action": "decide", "event": "L1", "decision": "POST_LATE", "period": "2026-05", "reason": "Bank confirmed receipt on 29 Apr; post as prior-period adjustment"},
+        {"action": "calculate", "period": "2026-05"},
+        {"action": "assert_export_unchanged", "period": "2026-04", "tag": "april_before"}
+      ],
+      "expect_lines": {
+        "2026-04": [{"type": "EARNING", "event": "E1", "rep": "REP-A", "base_portion": 1000000, "accel_portion": 240740, "amount": 69259}],
+        "2026-05": [{"type": "LATE_EARNING", "event": "L1", "rep": "REP-A", "original_period": "2026-04", "base_portion": 0, "accel_portion": 150000, "accel_bps": 800, "plan_version": 1, "amount": 12000}]
+      },
+      "expect_totals": {"2026-05": {"REP-A": {"USD": 12000}}}
+    },
+    {
+      "id": "HC-14",
+      "title": "Split collection crosses the threshold for one rep only",
+      "requirements": ["CAL-02", "CAL-03"],
+      "business_date": "2026-07-15",
+      "cash": ["E1,COLLECTION,K-SGD-A,2026-04-05,SGD,8000.00,,,", "E2,COLLECTION,K-6040,2026-04-12,SGD,20000.00,,,"],
+      "steps": [{"action": "calculate", "period": "2026-04"}],
+      "expect_lines": {
+        "2026-04": [
+          {"type": "EARNING", "event": "E1", "rep": "REP-A", "amount": 40000},
+          {"type": "EARNING", "event": "E2", "rep": "REP-A", "credited": 1200000, "base_portion": 200000, "accel_portion": 1000000, "amount": 90000},
+          {"type": "EARNING", "event": "E2", "rep": "REP-B", "credited": 800000, "base_portion": 800000, "accel_portion": 0, "amount": 40000}
+        ]
+      },
+      "expect_totals": {"2026-04": {"REP-A": {"SGD": 130000}, "REP-B": {"SGD": 40000}}}
+    },
+    {
+      "id": "HC-15",
+      "title": "Full refund (next period, after close) of a split collection nets every rep to exactly zero",
+      "requirements": ["CAL-02", "CAL-05"],
+      "business_date": "2026-07-15",
+      "cash": ["E1,COLLECTION,K-USD-6040,2026-04-14,USD,12345.67,,,"],
+      "steps": [
+        {"action": "calculate", "period": "2026-04"},
+        {"action": "close", "period": "2026-04"},
+        {"action": "import_cash", "rows": ["R1,REFUND,K-USD-6040,2026-05-20,USD,12345.67,E1,,full refund"]},
+        {"action": "calculate", "period": "2026-05"}
+      ],
+      "expect_lines": {
+        "2026-05": [
+          {"type": "CLAWBACK", "event": "R1", "rep": "REP-A", "credit_reversed": 740740, "amount": -37037},
+          {"type": "CLAWBACK", "event": "R1", "rep": "REP-B", "credit_reversed": 493827, "amount": -24691}
+        ]
+      },
+      "expect_totals": {"2026-05": {"REP-A": {"USD": -37037}, "REP-B": {"USD": -24691}}}
+    },
+    {
+      "id": "HC-16",
+      "title": "Odd split partial refunds: credit reversal by not-yet-reversed credit, exact on completion",
+      "requirements": ["CAL-02", "CAL-05"],
+      "business_date": "2026-07-15",
+      "cash": [
+        "E1,COLLECTION,K-5050,2026-04-01,SGD,10.01,,,",
+        "R1,REFUND,K-5050,2026-04-02,SGD,0.01,E1,,",
+        "R2,REFUND,K-5050,2026-04-03,SGD,10.00,E1,,"
+      ],
+      "steps": [{"action": "calculate", "period": "2026-04"}],
+      "expect_lines": {
+        "2026-04": [
+          {"type": "EARNING", "event": "E1", "rep": "REP-A", "credited": 501, "amount": 25},
+          {"type": "EARNING", "event": "E1", "rep": "REP-B", "credited": 500, "amount": 25},
+          {"type": "CLAWBACK", "event": "R1", "rep": "REP-A", "credit_reversed": 1, "amount": 0},
+          {"type": "CLAWBACK", "event": "R1", "rep": "REP-B", "credit_reversed": 0, "amount": 0},
+          {"type": "CLAWBACK", "event": "R2", "rep": "REP-A", "credit_reversed": 500, "amount": -25},
+          {"type": "CLAWBACK", "event": "R2", "rep": "REP-B", "credit_reversed": 500, "amount": -25}
+        ]
+      },
+      "expect_totals": {"2026-04": {"REP-A": {"SGD": 0}, "REP-B": {"SGD": 0}}}
+    }
+  ],
+  "validation": [
+    {"id": "V-01", "title": "zero amount", "row": "X1,COLLECTION,K-SGD-A,2026-04-06,SGD,0.00,,,", "code": "AMOUNT_NOT_POSITIVE"},
+    {"id": "V-02", "title": "negative amount on a collection", "row": "X1,COLLECTION,K-SGD-A,2026-04-06,SGD,-50.00,,,", "code": "AMOUNT_FORMAT"},
+    {"id": "V-03a", "title": "thousands separator", "row": "X1,COLLECTION,K-SGD-A,2026-04-06,SGD,\"1,250.00\",,,", "code": "AMOUNT_FORMAT"},
+    {"id": "V-03b", "title": "three decimals", "row": "X1,COLLECTION,K-SGD-A,2026-04-06,SGD,12.345,,,", "code": "AMOUNT_FORMAT"},
+    {"id": "V-03c", "title": "scientific notation", "row": "X1,COLLECTION,K-SGD-A,2026-04-06,SGD,1e3,,,", "code": "AMOUNT_FORMAT"},
+    {"id": "V-03d", "title": "NaN", "row": "X1,COLLECTION,K-SGD-A,2026-04-06,SGD,NaN,,,", "code": "AMOUNT_FORMAT"},
+    {"id": "V-05a", "title": "cash currency differs from contract currency", "row": "X1,COLLECTION,K-SGD-A,2026-04-06,USD,10.00,,,", "code": "CURRENCY_MISMATCH"},
+    {"id": "V-05b", "title": "unsupported currency", "row": "X1,COLLECTION,K-SGD-A,2026-04-06,EUR,10.00,,,", "code": "CURRENCY_UNSUPPORTED"},
+    {"id": "V-07a", "title": "refund of unknown event (orphan)", "row": "X1,REFUND,K-SGD-A,2026-04-06,SGD,10.00,NOPE,,", "code": "UNKNOWN_ORIGINAL_EVENT"},
+    {"id": "V-08a", "title": "unknown contract", "row": "X1,COLLECTION,K-NOPE,2026-04-06,SGD,10.00,,,", "code": "UNKNOWN_CONTRACT"},
+    {"id": "V-11", "title": "future-dated after business date", "row": "X1,COLLECTION,K-SGD-A,2026-07-16,SGD,10.00,,,", "code": "FUTURE_DATED"},
+    {"id": "V-16a", "title": "lowercase id is rejected, never normalised", "row": "x1,COLLECTION,K-SGD-A,2026-04-06,SGD,10.00,,,", "code": "ID_FORMAT"},
+    {"id": "V-16b", "title": "id containing a delimiter character", "row": "X1:Y,COLLECTION,K-SGD-A,2026-04-06,SGD,10.00,,,", "code": "ID_FORMAT"},
+    {"id": "V-17", "title": "impossible calendar date", "row": "X1,COLLECTION,K-SGD-A,2026-02-30,SGD,10.00,,,", "code": "DATE_FORMAT"},
+    {"id": "V-17b", "title": "non-ISO date", "row": "X1,COLLECTION,K-SGD-A,06/04/2026,SGD,10.00,,,", "code": "DATE_FORMAT"},
+    {"id": "V-18", "title": "unknown event type", "row": "X1,CHARGEBACK,K-SGD-A,2026-04-06,SGD,10.00,,,", "code": "EVENT_TYPE"},
+    {"id": "V-19", "title": "collection must not reference an original event", "row": "X1,COLLECTION,K-SGD-A,2026-04-06,SGD,10.00,E0,,", "code": "UNEXPECTED_ORIGINAL"}
+  ],
+  "refund_validation": {
+    "_setup": "E0 collection 1,000.00 SGD on K-SGD-A dated 2026-04-10 is imported first",
+    "setup_row": "E0,COLLECTION,K-SGD-A,2026-04-10,SGD,1000.00,,,",
+    "cases": [
+      {"id": "V-04", "title": "over-refund (cumulative 1,100 > 1,000): first refund accepted, second quarantined", "rows": ["R1,REFUND,K-SGD-A,2026-04-11,SGD,600.00,E0,,", "R2,REFUND,K-SGD-A,2026-04-12,SGD,500.00,E0,,"], "accepted": ["R1"], "quarantined": {"R2": "OVER_REFUND"}},
+      {"id": "V-04b", "title": "refund of exactly the remaining amount is accepted", "rows": ["R1,REFUND,K-SGD-A,2026-04-11,SGD,600.00,E0,,", "R2,REFUND,K-SGD-A,2026-04-12,SGD,400.00,E0,,"], "accepted": ["R1", "R2"], "quarantined": {}},
+      {"id": "V-06", "title": "refund dated before its collection", "rows": ["R1,REFUND,K-SGD-A,2026-04-09,SGD,10.00,E0,,"], "accepted": [], "quarantined": {"R1": "REFUND_BEFORE_COLLECTION"}},
+      {"id": "V-05c", "title": "refund currency differs from original", "rows": ["R1,REFUND,K-USD-A,2026-04-11,USD,10.00,E0,,"], "accepted": [], "quarantined": {"R1": "REFUND_CONTRACT_MISMATCH"}},
+      {"id": "V-07b", "title": "refund referencing a refund", "rows": ["R1,REFUND,K-SGD-A,2026-04-11,SGD,10.00,E0,,", "R2,REFUND,K-SGD-A,2026-04-12,SGD,10.00,R1,,"], "accepted": ["R1"], "quarantined": {"R2": "ORIGINAL_NOT_COLLECTION"}},
+      {"id": "V-07c", "title": "refund without an original event id", "rows": ["R1,REFUND,K-SGD-A,2026-04-11,SGD,10.00,,,"], "accepted": [], "quarantined": {"R1": "MISSING_ORIGINAL"}}
+    ]
+  },
+  "demo_story": {
+    "_readme": "Numbers the bundled demo must reproduce (see HAND_CALCULATIONS.md, 'Demo story').",
+    "expected_payouts": {
+      "2026-04": {"REP-AURORA": {"SGD": 66000}, "REP-BIRCH": {"SGD": 20000}, "REP-CEDAR": {"USD": 69259}, "REP-DELTA": {"USD": 24691}},
+      "2026-05": {"REP-AURORA": {"SGD": 51000}, "REP-CEDAR": {"USD": 21000}, "REP-DELTA": {"USD": 6000}}
+    },
+    "variances": {
+      "2026-04": {"REP-CEDAR": {"USD": -7222}},
+      "2026-05": {"REP-AURORA": {"SGD": 8000}, "REP-CEDAR": {"USD": -12000}}
+    }
+  }
+}
