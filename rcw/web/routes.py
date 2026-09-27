@@ -75,8 +75,9 @@ def demo_progress(c) -> list[dict[str, Any]]:
     resolved = c.execute("SELECT COUNT(*) FROM variance_cases WHERE status = 'RESOLVED'").fetchone()[0]
     steps = [
         {"title": "Load the demo data (stage 1: data as of 6 May 2026)", "done": stage >= 1,
-         "detail": "Reps, plan v1, contracts, splits, April cash, April payout register. Three rows are "
-                   "quarantined on purpose (a future-dated receipt, a split that totals 90%, an unknown rep)."},
+         "detail": "Reps, plan v1, contracts, splits, April cash, April payout register. Four rows are "
+                   "quarantined on purpose, from three planted problems: a future-dated receipt, a split that "
+                   "totals 90% (both of its rows) and a payout for an unknown rep."},
         {"title": "Close April 2026", "done": apr, "link": url_for("ui.period", p="2026-04"),
          "detail": "Open April → Calculate → Submit for review as analyst-1 → switch to manager-1 → Close. "
                    "Look for the 60/40 split sale and the threshold crossing."},

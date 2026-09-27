@@ -9,7 +9,7 @@ http://127.0.0.1:5057. If the database already has a played story you want to re
 | Time | Click | Say |
 |---|---|---|
 | 0:00 | Overview | “A RevOps analyst must say what cash came in, what is eligible, what each rep is owed, why a number changed, and why payroll differs. Bookings, invoices, cash and commission are different numbers; this demo pays on cash collected under one invented policy.” |
-| 0:15 | *Load demo data (stage 1)* → Imports → latest batch | “Files are identified by content hash. Three rows are quarantined on purpose, a duplicate row is skipped, and read = accepted + duplicate + quarantined, in rows and in money.” |
+| 0:15 | *Load demo data (stage 1)* → Imports → latest batch | “Files are identified by content hash. Three planted problems — four rows — are quarantined on purpose, a duplicate row is skipped, and read = accepted + duplicate + quarantined, in rows and in money.” |
 | 0:40 | Overview → *Close April 2026* → **Calculate draft** | “Five control checks pass: credited cents equal collected cents, refunds conserve, brackets add up.” |
 | 0:55 | Rep table → Cedar → *Statement* → *evidence* on the 5,000.00 line | “60/40 split of 12,345.67: 7,407.40 and 4,938.27 — the odd cent goes to the larger remainder. Then Cedar crosses 10,000: 2,592.60 at 5%, 2,407.40 at 8%, one half-up rounding. Every line traces back to a file and row.” |
 | 1:20 | Back → **Submit** → try **Close** as analyst-1 → switch *Acting as* to manager-1 → **Close** | “Same label can't prepare and close. Close re-computes and freezes exactly what was reviewed — if anything changed, it refuses as stale.” |

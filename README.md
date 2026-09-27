@@ -1,7 +1,11 @@
 # Revenue & Commission Operations Workbench
 
-**Synthetic, independent portfolio prototype** · built with AI assistance (Claude Code) · Python + SQLite + Flask ·
-not accounting, revenue-recognition, payroll or employer software · all data invented.
+> **Recruiters and hiring managers:** start with the one-page [plain-English overview](docs/HR_OVERVIEW.md)
+> — the problem, a normal and a failure flow, the 3-minute demo, screenshots, evidence and limits.
+
+**Synthetic, independent portfolio prototype** · AI-assisted: directed by Herui, implemented by Claude Code,
+independently reviewed by Codex · Python + SQLite + Flask · not accounting, revenue-recognition, payroll or
+employer software · all data invented.
 
 **What it answers.** Every month a Revenue/Sales Operations analyst must explain:
 
@@ -43,7 +47,7 @@ recorded run artifacts (clearly labelled; not live results).
 ## The demo story (guided in the UI, ~3 minutes)
 
 1. **April** — a 60/40 **split sale** (USD 12,345.67 → 7,407.40 / 4,938.27), a **threshold crossing**
-   (2,592.60 at 5% + 2,407.40 at 8%), three rows quarantined on purpose. Preparer submits; a different
+   (2,592.60 at 5% + 2,407.40 at 8%), three planted data problems (four rows) quarantined on purpose. Preparer submits; a different
    reviewer label closes.
 2. **June data arrives** — plan v2 (accelerator 9% from May), a **partial refund** of an April sale
    (−80.00, reversed at the original 8%), and a receipt dated 29 April that arrived **after April closed**:
@@ -79,6 +83,7 @@ per line · SGD and USD never combined. Every decision and its alternatives: `do
 ## Docs
 | | |
 |---|---|
+| `docs/HR_OVERVIEW.md` | plain-English one-pager for recruiters and hiring managers |
 | `docs/01_requirements_acceptance.md` | scope, requirements, acceptance criteria |
 | `docs/02_data_dictionary.md` | every CSV column, rule and reason code |
 | `docs/03_policy_decision_log.md` | policy choices, alternatives, trade-offs |

@@ -76,8 +76,11 @@ month is protected from being rewritten</b>.</p>
 <div class=say><b>Say:</b> “Bookings, invoices, cash and commission are four different numbers. This workbench pays on
 <i>cash collected</i> under one invented demo policy, and every number can be traced to a source row.”</div>"""),
         ("0:20", "Load data — validation is visible", "load", f"""
-<p>One click loads stage 1 (data as of 6 May 2026). Three rows are quarantined on purpose: a receipt dated in the future,
-a split that totals 90%, and a payout for an unknown rep. An exact duplicate row is skipped, not double counted.</p>
+<p>One click loads stage 1 (data as of 6 May 2026). Four rows are quarantined on purpose, from three planted problems:
+a receipt dated in the future, a split that totals 90% (both of its rows) and a payout for an unknown rep. An exact
+duplicate row is skipped, not double counted.</p>
+<p class=note>Recorded screenshot: its guide text still says “three rows” — wording corrected later; the import result
+itself (4 quarantined rows) is unchanged. See docs/evidence/README.md.</p>
 {img('01_overview_stage1', 'Overview after loading stage 1: guided checklist and period picker')}
 {img('12_import_batch_control_totals', 'Import batch: rows read = accepted + duplicate + quarantined, amounts reconcile')}
 <div class=say><b>Say:</b> “Files are identified by their SHA-256, not their name. Nothing is silently dropped: every row
@@ -93,6 +96,8 @@ rounding. Click any line and you reach the file and row it came from.”</div>""
 <p>analyst-1 submits; the workbench refuses to let the same label close. manager-1 closes: the reviewed run becomes an
 immutable snapshot with a SHA-256, and payables are recorded (no payment is executed).</p>
 {img('03_april_closed', 'April closed: frozen snapshot, per-currency metrics, bridge chart, control checks')}
+<p class=note>Recorded screenshot: its export card still reads “byte-identical every time”. The current wording is
+“unchanged by any later application operation (not protected from tampering by the database-file owner)”.</p>
 <div class=say><b>Say:</b> “Close re-computes and compares every frozen field with what was reviewed. If anything changed
 after review — even a booking-only import — close is refused as stale.”</div>"""),
         ("1:40", "Late data after close — no restatement", "late", f"""
@@ -158,7 +163,7 @@ h2{{margin:8px 0 10px;font-size:1.25rem}}figure{{margin:12px 0}}figure img{{widt
 figcaption{{font-size:.82rem;color:var(--ink2)}}.say{{border-left:4px solid var(--accent);padding:8px 12px;margin:12px 0;background:var(--bg);border-radius:0 8px 8px 0}}
 table{{border-collapse:collapse;width:100%;font-size:.9rem;margin:8px 0;display:block;overflow-x:auto}}th,td{{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap}}td.n{{text-align:right;font-variant-numeric:tabular-nums}}
 .warn{{background:var(--warnbg);padding:10px 12px;border-radius:8px}}.checks{{columns:2;font-size:.88rem}}.ok{{color:var(--ok)}}.bad{{color:var(--bad)}}
-code{{font-size:.85em;overflow-wrap:anywhere}}.missing{{color:var(--bad)}}
+code{{font-size:.85em;overflow-wrap:anywhere}}.note{{font-size:.86rem;color:var(--ink2);border-left:3px solid var(--line);padding-left:10px}}.missing{{color:var(--bad)}}
 @media (max-width:860px){{.layout{{grid-template-columns:minmax(0,1fr)}}nav{{position:static;flex-direction:row;flex-wrap:wrap}}.checks{{columns:1}}}}
 </style></head><body>
 <div class="replay" role="note">DEMO REPLAY — recorded screenshots &amp; numbers from docs/evidence/. Not a live system or live results. Synthetic data.</div>
@@ -167,7 +172,10 @@ code{{font-size:.85em;overflow-wrap:anywhere}}.missing{{color:var(--bad)}}
 <p>3-minute guided walkthrough of a synthetic, independent portfolio prototype (built with AI assistance). Page built {built}
 from artifacts: <code>story_evidence.json</code>, <code>e2e_results.json</code>, <code>benchmark.json</code>,
 <code>test_results.txt</code>, <code>ci_run.json</code>, and Playwright screenshots.</p>
-<p>To run it live instead: <code>python3 -m rcw demo</code> (no install) or double-click <code>launch_demo.command</code> on a Mac.</p></header>
+<p>To run it live instead: <code>python3 -m rcw demo</code> (no install) or double-click <code>launch_demo.command</code> on a Mac.</p>
+<p class=note>Screenshots and numbers were recorded from the application at commit 8e8f7cc. Later commits changed only
+user-facing wording, not calculations; the known differences are noted beside the affected screenshots and listed in
+docs/evidence/README.md.</p></header>
 {body}
 </main></div></body></html>
 """
